@@ -32,11 +32,11 @@ type PublicKey struct {
 func GenerateKey() (*PrivateKey, error) {
 RETRY:
 	prime, _ := big.NewInt(0).SetString(PRIME, 10)
-	r0, s0, err := createCoPrimes(prime)
+	r0, s0, err := createCoPrimePair(prime)
 	if err != nil {
 		return nil, err
 	}
-	r1, s1, err := createCoPrimes(prime)
+	r1, s1, err := createCoPrimePair(prime)
 	if err != nil {
 		return nil, err
 	}
@@ -53,24 +53,23 @@ RETRY:
 	}, nil
 }
 
-func createCoPrimes(p *big.Int) (R *big.Int, S *big.Int, err error) {
+func createCoPrimePair(p *big.Int) (R *big.Int, S *big.Int, err error) {
 	one := big.NewInt(1)
+	psquared := new(big.Int).Mul(p, p)
 
 	for {
-		// Generate random integers R and S in the range [1, p-1]
-		R, err := rand.Int(rand.Reader, new(big.Int).Sub(p, one))
+		R, err = rand.Int(rand.Reader, p)
 		if err != nil {
 			return nil, nil, err
 		}
-		R.Add(R, one) // Ensure R is in the range [1, p-1]
+		R.Add(R, psquared)
 
-		S, err := rand.Int(rand.Reader, new(big.Int).Sub(p, one))
+		S, err = rand.Int(rand.Reader, p)
 		if err != nil {
 			return nil, nil, err
 		}
-		S.Add(S, one) // Ensure S is in the range [1, p-1]
+		S.Add(S, psquared)
 
-		// Check if gcd(R, S) == 1
 		if new(big.Int).GCD(nil, nil, R, S).Cmp(one) == 0 {
 			return R, S, nil
 		}

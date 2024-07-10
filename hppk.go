@@ -16,28 +16,28 @@ const (
 	ERRMSG_DATA_EXCEEDED_FIELD = "the secret to encrypt is not in the GF(p)"
 )
 
-// PrivateKey represents a private key in the DPPK protocol.
+// PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
 	r0, s0 *big.Int // r,s are coprimes
 	r1, s1 *big.Int
-	f0, f1 *big.Int // f(x) = a1x + a0 ,h(x) = b1x+ b0
+	f0, f1 *big.Int // f(x) = f1x + f0 ,h(x) = h1x+ h0
 	h0, h1 *big.Int
 	PublicKey
 }
 
-// PublicKey represents a public key in the DPPK protocol.
+// PublicKey represents a public key in the HPPK protocol.
 type PublicKey struct {
 	Prime *big.Int
 	P     []*big.Int
 	Q     []*big.Int
 }
 
-// GenerateKey generates a new DPPK private key with the given order and default prime number
+// GenerateKey generates a new HPPK private key with the given order and default prime number
 func GenerateKey(order int) (*PrivateKey, error) {
 	// Ensure the order is at least 5
-	if order < 5 {
-		return nil, errors.New(ERRMSG_ORDER)
-	}
+	//if order < 5 {
+	//	return nil, errors.New(ERRMSG_ORDER)
+	//	}
 
 RETRY:
 	prime, _ := big.NewInt(0).SetString(PRIME, 10)
@@ -70,7 +70,7 @@ RETRY:
 		return nil, err
 	}
 
-	if r0.Cmp(r1) == 0 || s0.Cmp(s1) == 0 || f0.Cmp(f1) == 0 {
+	if r0.Cmp(r1) == 0 || s0.Cmp(s1) == 0 || f0.Cmp(h0) == 0 || f1.Cmp(h1) == 0 {
 		goto RETRY
 	}
 
@@ -86,32 +86,42 @@ RETRY:
 	Bn = append(Bn, big.NewInt(1))
 
 	// generate P, Q
-	P := make([]*big.Int, order+2)
-	Q := make([]*big.Int, order+2)
+	P := make([]*big.Int, len(Bn)+1)
+	Q := make([]*big.Int, len(Bn)+1)
 
-	// λ + n + 1 == 1 + order + 1 = order + 2
-	for i := 0; i < order+2; i++ {
+	for i := 0; i < len(P); i++ {
 		P[i] = big.NewInt(0)
 		Q[i] = big.NewInt(0)
 	}
 
-	bigInt := new(big.Int)
+	t := new(big.Int)
 	// multiply f(x) and h(X) with Bn to get P and Q,
 	// the coefficients of the polynomial Bn has a length of order + 1
-	for i := 0; i < order+1; i++ {
+	// f(x) = f1x + f0 ,h(x) = h1x+ h0
+	for i := 0; i < len(Bn); i++ {
 		// Vector P
-		P[i].Add(P[i], bigInt.Mul(f0, Bn[i]))
-		ring(r0, s0, P[i])
+		t.Mul(f0, Bn[i])
+		P[i].Add(P[i], t)
+		P[i].Mod(P[i], prime)
 
-		P[i+1].Add(P[i+1], bigInt.Mul(f1, Bn[i]))
-		ring(r0, s0, P[i+1])
+		t.Mul(f1, Bn[i])
+		P[i+1].Add(P[i+1], t)
+		P[i+1].Mod(P[i+1], prime)
 
 		// Vector Q
-		Q[i].Add(Q[i], bigInt.Mul(h0, Bn[i]))
-		ring(r1, s1, Q[i])
+		t.Mul(h0, Bn[i])
+		Q[i].Add(Q[i], t)
+		Q[i].Mod(Q[i], prime)
 
-		Q[i+1].Add(Q[i+1], bigInt.Mul(h1, Bn[i]))
-		ring(r1, s1, Q[i+1])
+		t.Mul(h1, Bn[i])
+		Q[i+1].Add(Q[i+1], t)
+		Q[i+1].Mod(Q[i+1], prime)
+	}
+
+	// convert P, Q to Ring S
+	for i := 0; i < len(P); i++ {
+		ring(r0, s0, P[i])
+		ring(r1, s1, Q[i])
 	}
 
 	return &PrivateKey{
@@ -138,7 +148,7 @@ func ring(R *big.Int, S *big.Int, v *big.Int) {
 }
 
 // Encrypt encrypts a message using the given public key.
-func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (Ps *big.Int, Qs *big.Int, err error) {
+func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.Int, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
 	if secret.Cmp(priv.PublicKey.Prime) >= 0 {
@@ -151,45 +161,43 @@ func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (Ps *big.Int, Qs *big
 		if err != nil {
 			return nil, nil, err
 		}
+		SiNoise := new(big.Int)
 	*/
 
-	// Initialize variables for the encryption process
 	Si := new(big.Int).Set(secret)
 
 	// Compute the encrypted values Ps and Qs
 	// constants
-	Ps = new(big.Int).Set(pk.P[0])
-	Qs = new(big.Int).Set(pk.Q[0])
+	P = new(big.Int).Set(pk.P[0])
+	Q = new(big.Int).Set(pk.Q[0])
 	t := new(big.Int)
 	for i := 1; i < len(pk.P); i++ { // start from non constant item
-		//	SiNoise := new(big.Int).Set(Si)
-		//	SiNoise.Mul(SiNoise, noise)
-		//	SiNoise.Mod(SiNoise, pk.Prime)
+		//SiNoise.Mul(Si, noise)
+		//SiNoise.Mod(SiNoise, pk.Prime)
 
 		t.Mul(Si, pk.P[i])
-		Ps.Add(Ps, t)
-		Ps.Mod(Ps, pk.Prime)
+		P.Add(P, t)
 
 		t.Mul(Si, pk.Q[i])
-		Qs.Add(Qs, t)
-		Qs.Mod(Qs, pk.Prime)
+		Q.Add(Q, t)
 
 		Si.Mul(Si, secret)
 		Si.Mod(Si, pk.Prime)
 	}
 
-	return Ps, Qs, nil
+	return P, Q, nil
 }
 
 // Decrypt decrypts the encrypted values Ps and Qs using the private key.
 func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err error) {
 	// symmetric encryption
+	pbar := new(big.Int).Mod(P, priv.s0)
+	qbar := new(big.Int).Mod(Q, priv.s1)
 	revR0 := new(big.Int).ModInverse(priv.r0, priv.s0)
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 
-	pbar := new(big.Int).Mul(P, revR0)
-	qbar := new(big.Int).Mul(Q, revR1)
-
+	pbar.Mul(pbar, revR0)
+	qbar.Mul(qbar, revR1)
 	pbar.Mod(pbar, priv.s0)
 	qbar.Mod(qbar, priv.s1)
 
@@ -197,28 +205,56 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 	qbar.Mod(qbar, priv.PublicKey.Prime)
 
 	// noise elimination
-	reqbar := new(big.Int).ModInverse(qbar, priv.PublicKey.Prime)
-	k := new(big.Int).Mul(pbar, reqbar)
-	k.Mod(k, priv.PublicKey.Prime)
+	/*
+		revqbar := new(big.Int).ModInverse(qbar, priv.PublicKey.Prime)
+		k := new(big.Int).Mul(pbar, revqbar)
+		k.Mod(k, priv.PublicKey.Prime)
+		fmt.Println("K:", k)
+		fmt.Println("Prime:", priv.PublicKey.Prime)
+		fmt.Println("f0", priv.f0, "f1", priv.f1, "h0", priv.h0, "h1", priv.h1)
+		fmt.Printf("%d *(%dx + %d) = %dx +%d\n", k, priv.h1, priv.h0, priv.f1, priv.f0)
+	*/
 
-	// solve f(x) - k*h(x) =0
-	// f1 * x + f0 - k(h1x+h0) = 0
-	// (f1 - k*h1)x + f0 - kh0 = 0
-	//	x = (kh0 - f0)  / (f1 - k*h1)
-	kh1 := new(big.Int).Mul(k, priv.h1)
-	revkh1 := new(big.Int).Sub(priv.PublicKey.Prime, kh1)
-	denom := new(big.Int).Add(priv.f1, revkh1)
-	denom.Mod(denom, priv.PublicKey.Prime)
+	// Explanation:
+	// As:
+	//      pbar := Bn * (f1*x + f0) mod p
+	//      qbar := Bn * (h1*x + h0) mod p
+	//
+	// multiply the reverse of Bn on the both side of the equation, we have:
+	//      pbar*revBn(s):= (f1x + f0) mod p
+	//      qbar*revBn(s):= (h1x + h0) mod p
+	//
+	// to align the left and right side of the equation, we have:
+	//      pbar * qbar * revBn(s):= (f1x + f0) * Qs mod p
+	//      pbar * qbar * revBn(s):= (h1x + h0) * Ps mod p
+	//
+	// and evidently:
+	//      (f1x + f0) * qbar  == (h1x + h0) * pbar modp
+	//
 
-	kh0 := new(big.Int).Mul(k, priv.h0)
-	revf0 := new(big.Int).Sub(priv.PublicKey.Prime, priv.f0)
-	numer := new(big.Int).Add(kh0, revf0)
-	numer.Mod(numer, priv.PublicKey.Prime)
+	// a * x + b = 0
+	f1qbar := new(big.Int).Mul(priv.f1, qbar)
+	f0qbar := new(big.Int).Mul(priv.f0, qbar)
+	h0pbar := new(big.Int).Mul(priv.h0, pbar)
+	h1pbar := new(big.Int).Mul(priv.h1, pbar)
 
-	revDenom := new(big.Int).ModInverse(denom, priv.PublicKey.Prime)
+	a := new(big.Int)
+	revh1pbar := new(big.Int).Sub(priv.PublicKey.Prime, h1pbar)
+	a.Add(f1qbar, revh1pbar)
+	a.Mod(a, priv.PublicKey.Prime)
 
-	x := new(big.Int).Mul(numer, revDenom)
+	b := new(big.Int)
+	revh0pbar := new(big.Int).Sub(priv.PublicKey.Prime, h0pbar)
+	b.Add(f0qbar, revh0pbar)
+	b.Mod(b, priv.PublicKey.Prime)
+
+	// x := -b/a
+	revB := new(big.Int).Sub(priv.PublicKey.Prime, b)
+	revA := new(big.Int).ModInverse(a, priv.PublicKey.Prime)
+
+	x := new(big.Int).Mul(revA, revB)
 	x.Mod(x, priv.PublicKey.Prime)
+
 	return x, nil
 
 }

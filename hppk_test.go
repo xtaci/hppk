@@ -2,6 +2,8 @@ package hppk
 
 import (
 	"bytes"
+	"crypto/rand"
+	"log"
 	"math/big"
 	"testing"
 
@@ -18,19 +20,19 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestHPPK(t *testing.T) {
-	alice, err := GenerateKey(10)
+	alice, err := GenerateKey(3)
 	assert.Nil(t, err)
-	bob, err := GenerateKey(10)
+	bob, err := GenerateKey(3)
 	assert.Nil(t, err)
 
 	secret := []byte("hello quantum")
 	Ps, Qs, err := bob.Encrypt(&alice.PublicKey, secret)
 	assert.Nil(t, err)
-	t.Log("secret:", string(secret))
+	t.Log("secret:", secret)
 
 	x, err := alice.Decrypt(Ps, Qs)
 	assert.Nil(t, err)
-	t.Log("x:", string(x.Bytes()))
+	t.Log("x:", x.Bytes())
 
 	equal := bytes.Equal(secret, x.Bytes())
 	assert.True(t, equal)
@@ -40,4 +42,16 @@ func BenchmarkGenerateKey(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		GenerateKey(5)
 	}
+}
+
+func TestRing(t *testing.T) {
+	prime := big.NewInt(977)
+	r0, s0, _ := createCoPrimePair(prime)
+	revR0 := new(big.Int).ModInverse(r0, s0)
+	log.Println(r0, s0, revR0)
+	x, _ := rand.Int(rand.Reader, prime)
+	t.Log(x)
+	ring(r0, s0, x)
+	t.Log(x)
+
 }

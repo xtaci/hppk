@@ -20,9 +20,9 @@ func TestGenerateKey(t *testing.T) {
 }
 
 func TestHPPK(t *testing.T) {
-	alice, err := GenerateKey(3)
+	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
-	bob, err := GenerateKey(3)
+	bob, err := GenerateKey(10)
 	assert.Nil(t, err)
 
 	secret := []byte("hello quantum")

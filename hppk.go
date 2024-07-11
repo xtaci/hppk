@@ -3,7 +3,8 @@ package hppk
 import (
 	"crypto/rand" // Importing package for cryptographic random number generation
 	"errors"      // Importing package for error handling
-	"math/big"    // Importing package for handling arbitrary precision arithmetic
+	"fmt"
+	"math/big" // Importing package for handling arbitrary precision arithmetic
 )
 
 // PRIME is a large prime number used in cryptographic operations.
@@ -331,10 +332,10 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 		P[i].Mod(P[i], priv.PublicKey.Prime)
 
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
-		V[i].Div(V[i], priv.s2)
+		V[i].Quo(V[i], priv.s2)
 
 		U[i] = new(big.Int).Mul(priv.P[i], R)
-		U[i].Div(U[i], priv.s1)
+		U[i].Quo(U[i], priv.s1)
 	}
 
 	sig := &Signature{
@@ -357,29 +358,36 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 	sumLhs := new(big.Int)
 	sumRhs := new(big.Int)
 
+	Si := big.NewInt(1)
 	for i := 0; i < len(sig.Q); i++ {
-		Si := new(big.Int).Exp(md, big.NewInt(int64(i)), pk.Prime)
 		lhsA := new(big.Int).Mul(sig.Q[i], sig.F)
+
 		t.Mul(sig.F, sig.V[i])
-		t.Div(t, sig.R)
+		t.Quo(t, sig.R)
 		lhsB := new(big.Int).Mul(t, sig.S2Pub)
 		lhs := new(big.Int).Sub(lhsA, lhsB)
+
 		lhs.Mul(lhs, Si)
 		sumLhs.Add(sumLhs, lhs)
 		sumLhs.Mod(lhs, pk.Prime)
 
 		rhsA := new(big.Int).Mul(sig.P[i], sig.H)
+
 		t.Mul(sig.H, sig.U[i])
-		t.Div(t, sig.R)
+		t.Quo(t, sig.R)
 		rhsB := new(big.Int).Mul(t, sig.S1Pub)
 		rhs := new(big.Int).Sub(rhsA, rhsB)
-		rhs.Mod(rhs, pk.Prime)
+
 		rhs.Mul(rhs, Si)
 		sumRhs.Add(sumRhs, rhs)
 		sumRhs.Mod(sumRhs, pk.Prime)
+
+		Si.Mul(Si, md)
+		Si.Mod(Si, pk.Prime)
 	}
 
 	if sumLhs.Cmp(sumRhs) != 0 {
+		fmt.Println(sumLhs, "\n", sumRhs)
 		return false
 	}
 	return true

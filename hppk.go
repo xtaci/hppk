@@ -3,8 +3,7 @@ package hppk
 import (
 	"crypto/rand" // Importing package for cryptographic random number generation
 	"errors"      // Importing package for error handling
-	"fmt"
-	"math/big" // Importing package for handling arbitrary precision arithmetic
+	"math/big"    // Importing package for handling arbitrary precision arithmetic
 )
 
 // PRIME is a large prime number used in cryptographic operations.
@@ -259,57 +258,58 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 }
 
 type Signature struct {
-	F, H       *big.Int
-	S1, S2     *big.Int
-	Q, P, U, V []*big.Int
-	R          *big.Int
+	F, H         *big.Int
+	S1Pub, S2Pub *big.Int
+	Q, P, U, V   []*big.Int
+	R            *big.Int
 }
 
 // Sign the message digest
 func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	md := new(big.Int).SetBytes(digest)
 
-	a, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
+	// alpha is a randomly choosen number from Fp
+	alpha, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
 	if err != nil {
 		return nil, err
 	}
 
-	// a randomly choosen number - beta
+	// beta is a randomly choosen number from Fp
 	beta, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
 	if err != nil {
 		return nil, err
 	}
 
-	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
-	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
+	// calculate alpha * f(md) mod p
+	// f(x) = f1* x + f0
+	alphaFx := new(big.Int).Mul(priv.f1, md)
+	alphaFx.Add(alphaFx, priv.f0)
+	alphaFx.Mul(alphaFx, alpha)
+	alphaFx.Mod(alphaFx, priv.PublicKey.Prime)
 
-	// calculate a * f(md) mod p
-	fx := new(big.Int).Mul(priv.f1, md)
-	fx.Add(fx, priv.f0)
-	fx.Mul(fx, a)
-	fx.Mod(fx, priv.PublicKey.Prime)
-
-	hx := new(big.Int).Mul(priv.h1, md)
-	hx.Add(hx, priv.h0)
-	hx.Mul(hx, a)
-	hx.Mod(hx, priv.PublicKey.Prime)
+	alphaHx := new(big.Int).Mul(priv.h1, md)
+	alphaHx.Add(alphaHx, priv.h0)
+	alphaHx.Mul(alphaHx, alpha)
+	alphaHx.Mod(alphaHx, priv.PublicKey.Prime)
 
 	// calculate F & H
+	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
 	F := new(big.Int)
-	F.Mul(revR2, fx)
+	F.Mul(revR2, alphaFx)
 	F.Mod(F, priv.s2)
 
+	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 	H := new(big.Int)
-	H.Mul(revR1, hx)
+	H.Mul(revR1, alphaHx)
 	H.Mod(H, priv.s1)
 
 	// calculate V & U
-	S1pub := new(big.Int).Mul(beta, priv.s1)
-	S1pub.Mod(S1pub, priv.PublicKey.Prime)
-	S2pub := new(big.Int).Mul(beta, priv.s2)
-	S2pub.Mod(S2pub, priv.PublicKey.Prime)
+	S1Pub := new(big.Int).Mul(beta, priv.s1)
+	S1Pub.Mod(S1Pub, priv.PublicKey.Prime)
+	S2Pub := new(big.Int).Mul(beta, priv.s2)
+	S2Pub.Mod(S2Pub, priv.PublicKey.Prime)
 
-	// V, U, P, Q
+	// Initiate V, U, P, Q
 	Q := make([]*big.Int, len(priv.Q))
 	P := make([]*big.Int, len(priv.P))
 	V := make([]*big.Int, len(priv.P))
@@ -331,47 +331,56 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 		P[i].Mod(P[i], priv.PublicKey.Prime)
 
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
-		V[i].Quo(V[i], priv.s2)
+		V[i].Div(V[i], priv.s2)
 
 		U[i] = new(big.Int).Mul(priv.P[i], R)
-		U[i].Quo(U[i], priv.s1)
+		U[i].Div(U[i], priv.s1)
 	}
 
 	sig := &Signature{
-		F:  F,
-		H:  H,
-		Q:  Q,
-		P:  P,
-		V:  V,
-		U:  U,
-		S1: S1pub,
-		S2: S2pub,
-		R:  R,
+		F:     F,
+		H:     H,
+		Q:     Q,
+		P:     P,
+		V:     V,
+		U:     U,
+		S1Pub: S1Pub,
+		S2Pub: S2Pub,
+		R:     R,
 	}
 	return sig, nil
 }
 
 func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 	t := new(big.Int)
+	md := new(big.Int).SetBytes(digest)
+	sumLhs := new(big.Int)
+	sumRhs := new(big.Int)
+
 	for i := 0; i < len(sig.Q); i++ {
-		leftA := new(big.Int).Mul(sig.Q[i], sig.F)
+		Si := new(big.Int).Exp(md, big.NewInt(int64(i)), pk.Prime)
+		lhsA := new(big.Int).Mul(sig.Q[i], sig.F)
 		t.Mul(sig.F, sig.V[i])
-		t.Quo(t, sig.R)
-		leftB := new(big.Int).Mul(t, sig.S2)
-		left := new(big.Int).Sub(leftA, leftB)
-		left.Mod(left, pk.Prime)
+		t.Div(t, sig.R)
+		lhsB := new(big.Int).Mul(t, sig.S2Pub)
+		lhs := new(big.Int).Sub(lhsA, lhsB)
+		lhs.Mul(lhs, Si)
+		sumLhs.Add(sumLhs, lhs)
+		sumLhs.Mod(lhs, pk.Prime)
 
-		rightA := new(big.Int).Mul(sig.P[i], sig.H)
+		rhsA := new(big.Int).Mul(sig.P[i], sig.H)
 		t.Mul(sig.H, sig.U[i])
-		t.Quo(t, sig.R)
-		rightB := new(big.Int).Mul(t, sig.S1)
-		right := new(big.Int).Sub(rightA, rightB)
-		right.Mod(right, pk.Prime)
+		t.Div(t, sig.R)
+		rhsB := new(big.Int).Mul(t, sig.S1Pub)
+		rhs := new(big.Int).Sub(rhsA, rhsB)
+		rhs.Mod(rhs, pk.Prime)
+		rhs.Mul(rhs, Si)
+		sumRhs.Add(sumRhs, rhs)
+		sumRhs.Mod(sumRhs, pk.Prime)
+	}
 
-		fmt.Println(left, "==>", right)
-		if left.Cmp(right) != 0 {
-			return false
-		}
+	if sumLhs.Cmp(sumRhs) != 0 {
+		return false
 	}
 	return true
 }

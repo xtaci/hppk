@@ -45,7 +45,6 @@ func TestSig(t *testing.T) {
 	digest := []byte("hello quantum")
 	sign, err := alice.Sign(digest)
 	assert.Nil(t, err)
-	t.Log("sign:", sign)
 
 	assert.True(t, VerifySignature(sign, digest, &alice.PublicKey))
 }

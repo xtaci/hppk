@@ -257,14 +257,27 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 	return x, nil
 }
 
+type Signature struct {
+	F, H       *big.Int
+	S1, S2     *big.Int
+	Q, P, U, V []*big.Int
+}
+
 // Sign the message digest
-func (priv *PrivateKey) Sign(digest []byte) (F *big.Int, H *big.Int, err error) {
+func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	md := new(big.Int).SetBytes(digest)
 
 	a, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+
+	// a randomly choosen number - beta
+	beta, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
+	if err != nil {
+		return nil, err
+	}
+
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
 
@@ -280,15 +293,59 @@ func (priv *PrivateKey) Sign(digest []byte) (F *big.Int, H *big.Int, err error) 
 	hx.Mod(hx, priv.PublicKey.Prime)
 
 	// calculate F & H
-	F = new(big.Int)
+	F := new(big.Int)
 	F.Mul(revR2, fx)
 	F.Mod(F, priv.s2)
 
-	H = new(big.Int)
+	H := new(big.Int)
 	H.Mul(revR1, hx)
 	H.Mod(H, priv.s1)
 
-	return F, H, nil
+	// calculate V & U
+	S1 := new(big.Int).Mul(beta, priv.s1)
+	S1.Mod(S1, priv.PublicKey.Prime)
+	S2 := new(big.Int).Mul(beta, priv.s2)
+	S2.Mod(S2, priv.PublicKey.Prime)
+
+	// V, U, P, Q
+	Q := make([]*big.Int, len(priv.Q))
+	P := make([]*big.Int, len(priv.P))
+	V := make([]*big.Int, len(priv.P))
+	U := make([]*big.Int, len(priv.Q))
+
+	// make K >= L+ 32
+	K := priv.s1.BitLen()
+	if priv.s2.BitLen() > K {
+		K = priv.s2.BitLen()
+	}
+	K += 32
+	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(K)), nil)
+
+	for i := 0; i < len(Q); i++ {
+		Q[i] = new(big.Int).Mul(priv.Q[i], beta)
+		Q[i].Mod(Q[i], priv.PublicKey.Prime)
+
+		P[i] = new(big.Int).Mul(priv.P[i], beta)
+		P[i].Mod(P[i], priv.PublicKey.Prime)
+
+		V[i] = new(big.Int).Mul(priv.Q[i], R)
+		V[i].Div(V[i], priv.s2)
+
+		U[i] = new(big.Int).Mul(priv.P[i], R)
+		U[i].Div(U[i], priv.s1)
+	}
+
+	sig := &Signature{
+		F:  F,
+		H:  H,
+		Q:  Q,
+		P:  P,
+		V:  V,
+		U:  U,
+		S1: S1,
+		S2: S2,
+	}
+	return sig, nil
 }
 
 // createCoPrimePair generates a pair of coprime numbers (R, S) greater than the given prime p.

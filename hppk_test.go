@@ -19,7 +19,7 @@ func TestGenerateKey(t *testing.T) {
 	assert.Equal(t, gcd.GCD(nil, nil, key.r2, key.s2), one, "GCD(r1, s1) != 1")
 }
 
-func TestHPPK(t *testing.T) {
+func TestKEM(t *testing.T) {
 	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
 	bob, err := GenerateKey(10)
@@ -36,6 +36,14 @@ func TestHPPK(t *testing.T) {
 
 	equal := bytes.Equal(secret, x.Bytes())
 	assert.True(t, equal)
+}
+
+func TestSig(t *testing.T) {
+	key, err := GenerateKey(5)
+	assert.Nil(t, err, "GenerateKey() failed")
+	sign, err := key.Sign([]byte("hello quantum"))
+	assert.Nil(t, err)
+	t.Log("sign:", sign)
 }
 
 func BenchmarkGenerateKey(b *testing.B) {

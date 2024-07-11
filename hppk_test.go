@@ -39,11 +39,15 @@ func TestKEM(t *testing.T) {
 }
 
 func TestSig(t *testing.T) {
-	key, err := GenerateKey(5)
-	assert.Nil(t, err, "GenerateKey() failed")
-	sign, err := key.Sign([]byte("hello quantum"))
+	alice, err := GenerateKey(10)
+	assert.Nil(t, err)
+
+	digest := []byte("hello quantum")
+	sign, err := alice.Sign(digest)
 	assert.Nil(t, err)
 	t.Log("sign:", sign)
+
+	assert.True(t, VerifySignature(sign, digest, &alice.PublicKey))
 }
 
 func BenchmarkGenerateKey(b *testing.B) {

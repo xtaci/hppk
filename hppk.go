@@ -3,7 +3,8 @@ package hppk
 import (
 	"crypto/rand" // Importing package for cryptographic random number generation
 	"errors"      // Importing package for error handling
-	"math/big"    // Importing package for handling arbitrary precision arithmetic
+	"fmt"
+	"math/big" // Importing package for handling arbitrary precision arithmetic
 )
 
 // PRIME is a large prime number used in cryptographic operations.
@@ -261,6 +262,7 @@ type Signature struct {
 	F, H       *big.Int
 	S1, S2     *big.Int
 	Q, P, U, V []*big.Int
+	R          *big.Int
 }
 
 // Sign the message digest
@@ -281,7 +283,7 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
 
-	// calculate a * f(md)
+	// calculate a * f(md) mod p
 	fx := new(big.Int).Mul(priv.f1, md)
 	fx.Add(fx, priv.f0)
 	fx.Mul(fx, a)
@@ -302,10 +304,10 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	H.Mod(H, priv.s1)
 
 	// calculate V & U
-	S1 := new(big.Int).Mul(beta, priv.s1)
-	S1.Mod(S1, priv.PublicKey.Prime)
-	S2 := new(big.Int).Mul(beta, priv.s2)
-	S2.Mod(S2, priv.PublicKey.Prime)
+	S1pub := new(big.Int).Mul(beta, priv.s1)
+	S1pub.Mod(S1pub, priv.PublicKey.Prime)
+	S2pub := new(big.Int).Mul(beta, priv.s2)
+	S2pub.Mod(S2pub, priv.PublicKey.Prime)
 
 	// V, U, P, Q
 	Q := make([]*big.Int, len(priv.Q))
@@ -329,10 +331,10 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 		P[i].Mod(P[i], priv.PublicKey.Prime)
 
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
-		V[i].Div(V[i], priv.s2)
+		V[i].Quo(V[i], priv.s2)
 
 		U[i] = new(big.Int).Mul(priv.P[i], R)
-		U[i].Div(U[i], priv.s1)
+		U[i].Quo(U[i], priv.s1)
 	}
 
 	sig := &Signature{
@@ -342,10 +344,36 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 		P:  P,
 		V:  V,
 		U:  U,
-		S1: S1,
-		S2: S2,
+		S1: S1pub,
+		S2: S2pub,
+		R:  R,
 	}
 	return sig, nil
+}
+
+func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
+	t := new(big.Int)
+	for i := 0; i < len(sig.Q); i++ {
+		leftA := new(big.Int).Mul(sig.Q[i], sig.F)
+		t.Mul(sig.F, sig.V[i])
+		t.Quo(t, sig.R)
+		leftB := new(big.Int).Mul(t, sig.S2)
+		left := new(big.Int).Sub(leftA, leftB)
+		left.Mod(left, pk.Prime)
+
+		rightA := new(big.Int).Mul(sig.P[i], sig.H)
+		t.Mul(sig.H, sig.U[i])
+		t.Quo(t, sig.R)
+		rightB := new(big.Int).Mul(t, sig.S1)
+		right := new(big.Int).Sub(rightA, rightB)
+		right.Mod(right, pk.Prime)
+
+		fmt.Println(left, "==>", right)
+		if left.Cmp(right) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // createCoPrimePair generates a pair of coprime numbers (R, S) greater than the given prime p.

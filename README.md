@@ -111,6 +111,61 @@ func main() {
 }
 ```
 
+### Signing and VerifySignature
+```go
+package main
+
+import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
+)
+
+// Replace the hppk package import with the actual package path
+import "./hppk"
+
+func main() {
+	// Generate a new private key for signing
+	order := 10 // Example order, should be >= 5
+	privateKey, err := hppk.GenerateKey(order)
+	if err != nil {
+		fmt.Println("Error generating private key:", err)
+		return
+	}
+
+	// Define a message to sign
+	message := []byte("Hello, world!")
+
+	// Sign the message using the private key
+	signature, err := privateKey.Sign(message)
+	if err != nil {
+		fmt.Println("Error signing message:", err)
+		return
+	}
+
+	// Print out the signature components for demonstration
+	fmt.Println("Signature Components:")
+	fmt.Println("F:", signature.F)
+	fmt.Println("H:", signature.H)
+	fmt.Println("Q:", signature.Q)
+	fmt.Println("P:", signature.P)
+	fmt.Println("V:", signature.V)
+	fmt.Println("U:", signature.U)
+	fmt.Println("S1Pub:", signature.S1Pub)
+	fmt.Println("S2Pub:", signature.S2Pub)
+	fmt.Println("R:", signature.R)
+
+	// Verify the signature using the corresponding public key
+	isValid := hppk.VerifySignature(signature, message, &privateKey.PublicKey)
+	if isValid {
+		fmt.Println("Signature is valid.")
+	} else {
+		fmt.Println("Signature is not valid.")
+	}
+}
+
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request for any improvements, bug fixes, or additional features.

@@ -264,7 +264,7 @@ type Signature struct {
 	R            *big.Int
 }
 
-// Sign the message digest
+// Sign the message digest, returning a signature.
 func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	md := new(big.Int).SetBytes(digest)
 
@@ -351,6 +351,7 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	return sig, nil
 }
 
+// VerifySignature verifies the signature of the message digest using the public key.
 func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 	t := new(big.Int)
 	md := new(big.Int).SetBytes(digest)

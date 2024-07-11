@@ -18,8 +18,8 @@ const (
 
 // PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
-	r0, s0    *big.Int // r0 and s0 are coprimes
 	r1, s1    *big.Int // r1 and s1 are coprimes
+	r2, s2    *big.Int // r2 and s2 are coprimes
 	f0, f1    *big.Int // f(x) = f1x + f0
 	h0, h1    *big.Int // h(x) = h1x + h0
 	PublicKey          // Embedding PublicKey structure
@@ -42,12 +42,12 @@ func GenerateKey(order int) (*PrivateKey, error) {
 RETRY:
 	// Convert the prime constant to a big.Int
 	prime, _ := big.NewInt(0).SetString(PRIME, 10)
-	// Generate coprime pairs (r0, s0) and (r1, s1)
-	r0, s0, err := createCoPrimePair(prime)
+	// Generate coprime pairs (r1, s1) and (r1, s1)
+	r1, s1, err := createCoPrimePair(prime)
 	if err != nil {
 		return nil, err
 	}
-	r1, s1, err := createCoPrimePair(prime)
+	r2, s2, err := createCoPrimePair(prime)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ RETRY:
 	}
 
 	// Ensure all pairs are distinct
-	if r0.Cmp(r1) == 0 || s0.Cmp(s1) == 0 || f0.Cmp(h0) == 0 || f1.Cmp(h1) == 0 {
+	if r1.Cmp(r2) == 0 || s1.Cmp(s2) == 0 || f0.Cmp(h0) == 0 || f1.Cmp(h1) == 0 {
 		goto RETRY
 	}
 
@@ -118,16 +118,16 @@ RETRY:
 
 	// Convert P, Q to Ring S
 	for i := 0; i < len(P); i++ {
-		ring(r0, s0, P[i])
-		ring(r1, s1, Q[i])
+		ring(r1, s1, P[i])
+		ring(r2, s2, Q[i])
 	}
 
 	// Return the generated private key
 	return &PrivateKey{
-		r0: r0,
-		s0: s0,
 		r1: r1,
 		s1: s1,
+		r2: r2,
+		s2: s2,
 		f0: f0,
 		f1: f1,
 		h0: h0,
@@ -191,15 +191,15 @@ func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.I
 // Decrypt decrypts the encrypted values P and Q using the private key.
 func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err error) {
 	// Symmetric decryption using private key components
-	pbar := new(big.Int).Mod(P, priv.s0)
-	qbar := new(big.Int).Mod(Q, priv.s1)
-	revR0 := new(big.Int).ModInverse(priv.r0, priv.s0)
+	pbar := new(big.Int).Mod(P, priv.s1)
+	qbar := new(big.Int).Mod(Q, priv.s2)
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
+	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
 
-	pbar.Mul(pbar, revR0)
-	qbar.Mul(qbar, revR1)
-	pbar.Mod(pbar, priv.s0)
-	qbar.Mod(qbar, priv.s1)
+	pbar.Mul(pbar, revR1)
+	qbar.Mul(qbar, revR2)
+	pbar.Mod(pbar, priv.s1)
+	qbar.Mod(qbar, priv.s2)
 
 	pbar.Mod(pbar, priv.PublicKey.Prime)
 	qbar.Mod(qbar, priv.PublicKey.Prime)
@@ -255,6 +255,40 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 	x.Mod(x, priv.PublicKey.Prime)
 
 	return x, nil
+}
+
+// Sign the message digest
+func (priv *PrivateKey) Sign(digest []byte) (F *big.Int, H *big.Int, err error) {
+	md := new(big.Int).SetBytes(digest)
+
+	a, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
+	if err != nil {
+		return nil, nil, err
+	}
+	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
+	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
+
+	// calculate a * f(md)
+	fx := new(big.Int).Mul(priv.f1, md)
+	fx.Add(fx, priv.f0)
+	fx.Mul(fx, a)
+	fx.Mod(fx, priv.PublicKey.Prime)
+
+	hx := new(big.Int).Mul(priv.h1, md)
+	hx.Add(hx, priv.h0)
+	hx.Mul(hx, a)
+	hx.Mod(hx, priv.PublicKey.Prime)
+
+	// calculate F & H
+	F = new(big.Int)
+	F.Mul(revR2, fx)
+	F.Mod(F, priv.s2)
+
+	H = new(big.Int)
+	H.Mul(revR1, hx)
+	H.Mod(H, priv.s1)
+
+	return F, H, nil
 }
 
 // createCoPrimePair generates a pair of coprime numbers (R, S) greater than the given prime p.

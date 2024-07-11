@@ -3,8 +3,7 @@ package hppk
 import (
 	"crypto/rand" // Importing package for cryptographic random number generation
 	"errors"      // Importing package for error handling
-	"fmt"
-	"math/big" // Importing package for handling arbitrary precision arithmetic
+	"math/big"    // Importing package for handling arbitrary precision arithmetic
 )
 
 // PRIME is a large prime number used in cryptographic operations.
@@ -369,7 +368,7 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 
 		lhs.Mul(lhs, Si)
 		sumLhs.Add(sumLhs, lhs)
-		sumLhs.Mod(lhs, pk.Prime)
+		sumLhs.Mod(sumLhs, pk.Prime)
 
 		rhsA := new(big.Int).Mul(sig.P[i], sig.H)
 
@@ -387,7 +386,6 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 	}
 
 	if sumLhs.Cmp(sumRhs) != 0 {
-		fmt.Println(sumLhs, "\n", sumRhs)
 		return false
 	}
 	return true

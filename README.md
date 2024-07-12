@@ -140,10 +140,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"github.com/xtaci/hppk"
 )
-
-// Replace the hppk package import with the actual package path
-import "./hppk"
 
 func main() {
 	// Generate a new private key for signing

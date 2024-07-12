@@ -249,6 +249,7 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 	return x, nil
 }
 
+// Signature represents a digital signature in the HPPK protocol.
 type Signature struct {
 	F, H         *big.Int
 	S1Pub, S2Pub *big.Int

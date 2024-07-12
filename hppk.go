@@ -11,9 +11,11 @@ const PRIME = "32317006071311007300714876688669951960444102669715484032130345427
 
 // Error messages for various conditions.
 const (
-	ERRMSG_ORDER               = "order must be at least 5"
-	ERRMSG_NULL_ENCRYPT        = "encrypted values cannot be null"
-	ERRMSG_DATA_EXCEEDED_FIELD = "the secret to encrypt is not in the GF(p)"
+	ERR_MSG_ORDER           = "order must be at least 5"
+	ERR_MSG_NULL_ENCRYPTION = "encrypted values cannot be null"
+	ERR_MSG_DATA_EXCEEDED   = "the secret to encrypt is not in the GF(p)"
+	ERR_MSG_INVALID_PUBKEY  = "public key is invalid"
+	ERR_MSG_INVALID_KEM     = "invalid kem value"
 )
 
 // PrivateKey represents a private key in the HPPK protocol.
@@ -36,7 +38,7 @@ type PublicKey struct {
 func GenerateKey(order int) (*PrivateKey, error) {
 	// Ensure the order is at least 5
 	if order < 5 {
-		return nil, errors.New(ERRMSG_ORDER)
+		return nil, errors.New(ERR_MSG_ORDER)
 	}
 
 RETRY:
@@ -72,6 +74,18 @@ RETRY:
 
 	// Ensure all pairs are distinct
 	if r1.Cmp(r2) == 0 || s1.Cmp(s2) == 0 || f0.Cmp(h0) == 0 || f1.Cmp(h1) == 0 {
+		goto RETRY
+	}
+
+	// Ensure f(x) and h(x) are not linear depending by checking it's coefficients
+	revF0 := new(big.Int).ModInverse(f0, prime)
+	revH0 := new(big.Int).ModInverse(h0, prime)
+
+	f1RevF0 := new(big.Int).Mul(f1, revF0)
+	f2RevH0 := new(big.Int).Mul(f1, revH0)
+	f1RevF0.Mod(f1RevF0, prime)
+	f2RevH0.Mod(f2RevH0, prime)
+	if f1RevF0.Cmp(f2RevH0) == 0 {
 		goto RETRY
 	}
 
@@ -151,10 +165,25 @@ func Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) 
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
 	if secret.Cmp(pk.Prime) >= 0 {
-		return nil, nil, errors.New(ERRMSG_DATA_EXCEEDED_FIELD)
+		return nil, nil, errors.New(ERR_MSG_DATA_EXCEEDED)
 	}
 
-	// Noise generation is commented out
+	// Ensure fields in the public key are valid
+	if pk.P == nil || pk.Q == nil {
+		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+	}
+
+	if len(pk.P) != len(pk.Q) {
+		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+	}
+
+	for i := 0; i < len(pk.P); i++ {
+		if pk.P[i] == nil || pk.Q[i] == nil {
+			return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+		}
+	}
+
+	// Generate a random noise
 	noise, err := rand.Int(rand.Reader, pk.Prime)
 	if err != nil {
 		return nil, nil, err
@@ -183,6 +212,17 @@ func Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) 
 
 // Decrypt decrypts the encrypted values P and Q using the private key.
 func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, err error) {
+	// Sanity check
+	if len(P) != len(Q) {
+		return nil, errors.New(ERR_MSG_INVALID_KEM)
+	}
+
+	for i := 0; i < len(P); i++ {
+		if P[i] == nil || Q[i] == nil {
+			return nil, errors.New(ERR_MSG_INVALID_KEM)
+		}
+	}
+
 	// Symmetric decryption using private key components
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
@@ -346,6 +386,21 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 
 // VerifySignature verifies the signature of the message digest using the public key.
 func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
+	// Ensure fields in the public key are valid
+	if pk.P == nil || pk.Q == nil {
+		return false
+	}
+
+	if len(pk.P) != len(pk.Q) {
+		return false
+	}
+
+	for i := 0; i < len(pk.P); i++ {
+		if pk.P[i] == nil || pk.Q[i] == nil {
+			return false
+		}
+	}
+
 	t := new(big.Int)
 	md := new(big.Int).SetBytes(digest)
 	sumLhs := new(big.Int)

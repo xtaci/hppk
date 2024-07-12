@@ -161,30 +161,30 @@ func ring(R *big.Int, S *big.Int, v *big.Int) {
 }
 
 // Encrypt encrypts a message using the given public key.
-func Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
+func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
-	if secret.Cmp(pk.Prime) >= 0 {
+	if secret.Cmp(pub.Prime) >= 0 {
 		return nil, nil, errors.New(ERR_MSG_DATA_EXCEEDED)
 	}
 
 	// Ensure fields in the public key are valid
-	if pk.P == nil || pk.Q == nil {
+	if pub.P == nil || pub.Q == nil {
 		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 	}
 
-	if len(pk.P) != len(pk.Q) {
+	if len(pub.P) != len(pub.Q) {
 		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 	}
 
-	for i := 0; i < len(pk.P); i++ {
-		if pk.P[i] == nil || pk.Q[i] == nil {
+	for i := 0; i < len(pub.P); i++ {
+		if pub.P[i] == nil || pub.Q[i] == nil {
 			return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 		}
 	}
 
 	// Generate a random noise
-	noise, err := rand.Int(rand.Reader, pk.Prime)
+	noise, err := rand.Int(rand.Reader, pub.Prime)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -192,19 +192,19 @@ func Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) 
 	// Initialize Si with the secret message
 	Si := big.NewInt(1)
 	// Compute the encrypted values P and Q
-	P = make([]*big.Int, len(pk.P))
-	Q = make([]*big.Int, len(pk.Q))
+	P = make([]*big.Int, len(pub.P))
+	Q = make([]*big.Int, len(pub.Q))
 
-	for i := 0; i < len(pk.P); i++ {
+	for i := 0; i < len(pub.P); i++ {
 		noised := new(big.Int).Mul(noise, Si)
-		noised.Mod(noised, pk.Prime)
+		noised.Mod(noised, pub.Prime)
 
-		P[i] = new(big.Int).Mul(noised, pk.P[i])
-		Q[i] = new(big.Int).Mul(noised, pk.Q[i])
+		P[i] = new(big.Int).Mul(noised, pub.P[i])
+		Q[i] = new(big.Int).Mul(noised, pub.Q[i])
 
 		// Si = secret^i
 		Si.Mul(Si, secret)
-		Si.Mod(Si, pk.Prime)
+		Si.Mod(Si, pub.Prime)
 	}
 
 	return P, Q, nil
@@ -377,18 +377,18 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 }
 
 // VerifySignature verifies the signature of the message digest using the public key.
-func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
+func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 	// Ensure fields in the public key are valid
-	if pk.P == nil || pk.Q == nil {
+	if pub.P == nil || pub.Q == nil {
 		return false
 	}
 
-	if len(pk.P) != len(pk.Q) {
+	if len(pub.P) != len(pub.Q) {
 		return false
 	}
 
-	for i := 0; i < len(pk.P); i++ {
-		if pk.P[i] == nil || pk.Q[i] == nil {
+	for i := 0; i < len(pub.P); i++ {
+		if pub.P[i] == nil || pub.Q[i] == nil {
 			return false
 		}
 	}
@@ -397,11 +397,11 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 	Q := make([]*big.Int, len(sig.U))
 	P := make([]*big.Int, len(sig.V))
 	for i := 0; i < len(Q); i++ {
-		Q[i] = new(big.Int).Mul(pk.Q[i], sig.Beta)
-		Q[i].Mod(Q[i], pk.Prime)
+		Q[i] = new(big.Int).Mul(pub.Q[i], sig.Beta)
+		Q[i].Mod(Q[i], pub.Prime)
 
-		P[i] = new(big.Int).Mul(pk.P[i], sig.Beta)
-		P[i].Mod(P[i], pk.Prime)
+		P[i] = new(big.Int).Mul(pub.P[i], sig.Beta)
+		P[i].Mod(P[i], pub.Prime)
 	}
 
 	// Verify signature
@@ -421,7 +421,7 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 
 		lhs.Mul(lhs, Si)
 		sumLhs.Add(sumLhs, lhs)
-		sumLhs.Mod(sumLhs, pk.Prime)
+		sumLhs.Mod(sumLhs, pub.Prime)
 
 		rhsA := new(big.Int).Mul(P[i], sig.H)
 
@@ -432,10 +432,10 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 
 		rhs.Mul(rhs, Si)
 		sumRhs.Add(sumRhs, rhs)
-		sumRhs.Mod(sumRhs, pk.Prime)
+		sumRhs.Mod(sumRhs, pub.Prime)
 
 		Si.Mul(Si, md)
-		Si.Mod(Si, pk.Prime)
+		Si.Mod(Si, pub.Prime)
 	}
 
 	return sumLhs.Cmp(sumRhs) == 0

@@ -147,7 +147,7 @@ func ring(R *big.Int, S *big.Int, v *big.Int) {
 }
 
 // Encrypt encrypts a message using the given public key.
-func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.Int, err error) {
+func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
 	if secret.Cmp(priv.PublicKey.Prime) >= 0 {
@@ -155,32 +155,25 @@ func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.I
 	}
 
 	// Noise generation is commented out
-	/*
-	   noise, err := rand.Int(rand.Reader, pk.Prime)
-	   if err != nil {
-	           return nil, nil, err
-	   }
-	   SiNoise := new(big.Int)
-	*/
+	noise, err := rand.Int(rand.Reader, pk.Prime)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Initialize Si with the secret message
 	Si := big.NewInt(1)
-
 	// Compute the encrypted values P and Q
-	P = new(big.Int)
-	Q = new(big.Int)
-	t := new(big.Int)
+	P = make([]*big.Int, len(pk.P))
+	Q = make([]*big.Int, len(pk.Q))
+
 	for i := 0; i < len(pk.P); i++ {
-		// SiNoise is commented out
-		//SiNoise.Mul(Si, noise)
-		//SiNoise.Mod(SiNoise, pk.Prime)
+		noised := new(big.Int).Mul(noise, Si)
+		noised.Mod(noised, pk.Prime)
 
-		t.Mul(Si, pk.P[i])
-		P.Add(P, t)
+		P[i] = new(big.Int).Mul(noised, pk.P[i])
+		Q[i] = new(big.Int).Mul(noised, pk.Q[i])
 
-		t.Mul(Si, pk.Q[i])
-		Q.Add(Q, t)
-
+		// Si = secret^i
 		Si.Mul(Si, secret)
 		Si.Mod(Si, pk.Prime)
 	}
@@ -189,31 +182,25 @@ func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.I
 }
 
 // Decrypt decrypts the encrypted values P and Q using the private key.
-func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err error) {
+func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, err error) {
 	// Symmetric decryption using private key components
-	pbar := new(big.Int).Mod(P, priv.s1)
-	qbar := new(big.Int).Mod(Q, priv.s2)
 	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
 	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
 
-	pbar.Mul(pbar, revR1)
-	qbar.Mul(qbar, revR2)
-	pbar.Mod(pbar, priv.s1)
-	qbar.Mod(qbar, priv.s2)
+	pbar := new(big.Int)
+	qbar := new(big.Int)
+	for i := 0; i < len(P); i++ {
+		t := new(big.Int).Mul(P[i], revR1)
+		t.Mod(t, priv.s1)
+		pbar.Add(pbar, t)
+
+		t = new(big.Int).Mul(Q[i], revR2)
+		t.Mod(t, priv.s2)
+		qbar.Add(qbar, t)
+	}
 
 	pbar.Mod(pbar, priv.PublicKey.Prime)
 	qbar.Mod(qbar, priv.PublicKey.Prime)
-
-	// Noise elimination is commented out
-	/*
-	   revqbar := new(big.Int).ModInverse(qbar, priv.PublicKey.Prime)
-	   k := new(big.Int).Mul(pbar, revqbar)
-	   k.Mod(k, priv.PublicKey.Prime)
-	   fmt.Println("K:", k)
-	   fmt.Println("Prime:", priv.PublicKey.Prime)
-	   fmt.Println("f0", priv.f0, "f1", priv.f1, "h0", priv.h0, "h1", priv.h1)
-	   fmt.Printf("%d *(%dx + %d) = %dx +%d\n", k, priv.h1, priv.h0, priv.f1, priv.f0)
-	*/
 
 	// Explanation of the decryption process:
 	// pbar := Bn * (f1*x + f0) mod p
@@ -224,8 +211,8 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 	// qbar*revBn(s) := (h1x + h0) mod p
 	//
 	// Aligning both equations:
-	// pbar * qbar * revBn(s) := (f1x + f0) * Qs mod p
-	// pbar * qbar * revBn(s) := (h1x + h0) * Ps mod p
+	// pbar * qbar * revBn(s) := (f1x + f0) * qbar mod p
+	// pbar * qbar * revBn(s) := (h1x + h0) * pbar mod p
 	//
 	// Thus:
 	// (f1x + f0) * qbar == (h1x + h0) * pbar mod p
@@ -236,6 +223,11 @@ func (priv *PrivateKey) Decrypt(P *big.Int, Q *big.Int) (secret *big.Int, err er
 	f0qbar := new(big.Int).Mul(priv.f0, qbar)
 	h0pbar := new(big.Int).Mul(priv.h0, pbar)
 	h1pbar := new(big.Int).Mul(priv.h1, pbar)
+
+	f1qbar.Mod(f1qbar, priv.PublicKey.Prime)
+	f0qbar.Mod(f0qbar, priv.PublicKey.Prime)
+	h1pbar.Mod(h1pbar, priv.PublicKey.Prime)
+	h0pbar.Mod(h0pbar, priv.PublicKey.Prime)
 
 	a := new(big.Int)
 	revh1pbar := new(big.Int).Sub(priv.PublicKey.Prime, h1pbar)

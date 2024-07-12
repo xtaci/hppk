@@ -378,10 +378,7 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 		Si.Mod(Si, pk.Prime)
 	}
 
-	if sumLhs.Cmp(sumRhs) != 0 {
-		return false
-	}
-	return true
+	return sumLhs.Cmp(sumRhs) == 0
 }
 
 // createCoPrimePair generates a pair of coprime numbers (R, S) greater than the given prime p.

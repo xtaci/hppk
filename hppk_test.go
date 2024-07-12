@@ -49,7 +49,7 @@ func TestSig(t *testing.T) {
 
 func BenchmarkGenerateKey(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GenerateKey(5)
+		_, _ = GenerateKey(5)
 	}
 }
 

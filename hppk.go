@@ -147,10 +147,10 @@ func ring(R *big.Int, S *big.Int, v *big.Int) {
 }
 
 // Encrypt encrypts a message using the given public key.
-func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
+func Encrypt(pk *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
-	if secret.Cmp(priv.PublicKey.Prime) >= 0 {
+	if secret.Cmp(pk.Prime) >= 0 {
 		return nil, nil, errors.New(ERRMSG_DATA_EXCEEDED_FIELD)
 	}
 

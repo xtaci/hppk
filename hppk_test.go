@@ -22,11 +22,9 @@ func TestGenerateKey(t *testing.T) {
 func TestKEM(t *testing.T) {
 	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
-	bob, err := GenerateKey(10)
-	assert.Nil(t, err)
 
 	secret := []byte("hello quantum")
-	Ps, Qs, err := bob.Encrypt(&alice.PublicKey, secret)
+	Ps, Qs, err := Encrypt(&alice.PublicKey, secret)
 	assert.Nil(t, err)
 	t.Log("secret:", secret)
 

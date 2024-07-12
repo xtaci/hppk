@@ -288,7 +288,7 @@ type Signature struct {
 	Beta               *big.Int   // a randomly choosen number from Fp
 	F, H               *big.Int   // F & H is calculated from the private key
 	S1Verify, S2Verify *big.Int   // S1Verify := beta * s1 mod p, S2Verify := beta * s2 mod p
-	U, V               []*big.Int // U = ⌊ R*P /S2 ⌋, V = ⌊ R*Q /S2 ⌋
+	U, V               []*big.Int // U = ⌊ R*P /S1 ⌋, V = ⌊ R*Q /S2 ⌋
 	K                  int        // R = 2^K
 }
 

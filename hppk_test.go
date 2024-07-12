@@ -36,7 +36,7 @@ func TestKEM(t *testing.T) {
 	assert.True(t, equal)
 }
 
-func TestSig(t *testing.T) {
+func TestDigitalSignature(t *testing.T) {
 	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
 

@@ -1,5 +1,12 @@
 # HPPK: Homomorphic Polynomial Public Key
 
+[![GoDoc][1]][2] [![Go Report Card][3]][4]
+
+[1]: https://godoc.org/github.com/xtaci/hppk?status.svg
+[2]: https://pkg.go.dev/github.com/xtaci/hppk
+[3]: https://goreportcard.com/badge/github.com/xtaci/hppk
+[4]: https://goreportcard.com/report/github.com/xtaci/hppk
+
 ## Overview
 
 HPPK is an implementation of a Homomorphic Polynomial Public Key (HPPK) system, designed for both Key Encapsulation Mechanisms (KEM) and Digital Signatures (DS). This cryptographic protocol leverages the properties of polynomials to create secure, efficient methods for key exchange and message signing.

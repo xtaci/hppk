@@ -291,6 +291,7 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 
 // Signature represents a digital signature in the HPPK protocol.
 type Signature struct {
+	Beta         *big.Int
 	F, H         *big.Int
 	S1Pub, S2Pub *big.Int
 	Q, P, U, V   []*big.Int
@@ -342,9 +343,7 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	S2Pub := new(big.Int).Mul(beta, priv.s2)
 	S2Pub.Mod(S2Pub, priv.PublicKey.Prime)
 
-	// Initiate V, U, P, Q
-	Q := make([]*big.Int, len(priv.Q))
-	P := make([]*big.Int, len(priv.P))
+	// Initiate V, U
 	V := make([]*big.Int, len(priv.P))
 	U := make([]*big.Int, len(priv.Q))
 
@@ -356,13 +355,7 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	K += 32
 	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(K)), nil)
 
-	for i := 0; i < len(Q); i++ {
-		Q[i] = new(big.Int).Mul(priv.Q[i], beta)
-		Q[i].Mod(Q[i], priv.PublicKey.Prime)
-
-		P[i] = new(big.Int).Mul(priv.P[i], beta)
-		P[i].Mod(P[i], priv.PublicKey.Prime)
-
+	for i := 0; i < len(V); i++ {
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
 		V[i].Quo(V[i], priv.s2)
 
@@ -371,10 +364,9 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	}
 
 	sig := &Signature{
+		Beta:  beta,
 		F:     F,
 		H:     H,
-		Q:     Q,
-		P:     P,
 		V:     V,
 		U:     U,
 		S1Pub: S1Pub,
@@ -401,6 +393,18 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 		}
 	}
 
+	// Initiate Q,P from public key
+	Q := make([]*big.Int, len(sig.U))
+	P := make([]*big.Int, len(sig.V))
+	for i := 0; i < len(Q); i++ {
+		Q[i] = new(big.Int).Mul(pk.Q[i], sig.Beta)
+		Q[i].Mod(Q[i], pk.Prime)
+
+		P[i] = new(big.Int).Mul(pk.P[i], sig.Beta)
+		P[i].Mod(P[i], pk.Prime)
+	}
+
+	// Verify signature
 	t := new(big.Int)
 	md := new(big.Int).SetBytes(digest)
 	sumLhs := new(big.Int)
@@ -408,7 +412,7 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 
 	Si := big.NewInt(1)
 	for i := 0; i < len(sig.Q); i++ {
-		lhsA := new(big.Int).Mul(sig.Q[i], sig.F)
+		lhsA := new(big.Int).Mul(Q[i], sig.F)
 
 		t.Mul(sig.F, sig.V[i])
 		t.Quo(t, sig.R)
@@ -419,7 +423,7 @@ func VerifySignature(sig *Signature, digest []byte, pk *PublicKey) bool {
 		sumLhs.Add(sumLhs, lhs)
 		sumLhs.Mod(sumLhs, pk.Prime)
 
-		rhsA := new(big.Int).Mul(sig.P[i], sig.H)
+		rhsA := new(big.Int).Mul(P[i], sig.H)
 
 		t.Mul(sig.H, sig.U[i])
 		t.Quo(t, sig.R)

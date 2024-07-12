@@ -164,18 +164,6 @@ func main() {
 		return
 	}
 
-	// Print out the signature components for demonstration
-	fmt.Println("Signature Components:")
-	fmt.Println("F:", signature.F)
-	fmt.Println("H:", signature.H)
-	fmt.Println("Q:", signature.Q)
-	fmt.Println("P:", signature.P)
-	fmt.Println("V:", signature.V)
-	fmt.Println("U:", signature.U)
-	fmt.Println("S1Pub:", signature.S1Pub)
-	fmt.Println("S2Pub:", signature.S2Pub)
-	fmt.Println("R:", signature.R)
-
 	// Verify the signature using the corresponding public key
 	isValid := hppk.VerifySignature(signature, message, &privateKey.PublicKey)
 	if isValid {

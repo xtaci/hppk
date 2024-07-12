@@ -285,11 +285,11 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 
 // Signature represents a digital signature in the HPPK protocol.
 type Signature struct {
-	Beta         *big.Int // a randomly choosen number from Fp
-	F, H         *big.Int //
-	S1Pub, S2Pub *big.Int
-	U, V         []*big.Int
-	R            *big.Int
+	Beta               *big.Int   // a randomly choosen number from Fp
+	F, H               *big.Int   // F & H is calculated from the private key
+	S1Verify, S2Verify *big.Int   // S1Verify := beta * s1 mod p, S2Verify := beta * s2 mod p
+	U, V               []*big.Int // U = ⌊ R*P /S2 ⌋, V = ⌊ R*Q /S2 ⌋
+	K                  int        // R = 2^K
 }
 
 // Sign the message digest, returning a signature.
@@ -358,14 +358,14 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	}
 
 	sig := &Signature{
-		Beta:  beta,
-		F:     F,
-		H:     H,
-		V:     V,
-		U:     U,
-		S1Pub: S1Pub,
-		S2Pub: S2Pub,
-		R:     R,
+		Beta:     beta,
+		F:        F,
+		H:        H,
+		V:        V,
+		U:        U,
+		S1Verify: S1Pub,
+		S2Verify: S2Pub,
+		K:        K,
 	}
 	return sig, nil
 }
@@ -404,13 +404,17 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 	sumLhs := new(big.Int)
 	sumRhs := new(big.Int)
 
+	// recover R
+	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(sig.K)), nil)
+
+	// verify signature
 	Si := big.NewInt(1)
 	for i := 0; i < len(Q); i++ {
 		lhsA := new(big.Int).Mul(Q[i], sig.F)
 
 		t.Mul(sig.F, sig.V[i])
-		t.Quo(t, sig.R)
-		lhsB := new(big.Int).Mul(t, sig.S2Pub)
+		t.Quo(t, R)
+		lhsB := new(big.Int).Mul(t, sig.S2Verify)
 		lhs := new(big.Int).Sub(lhsA, lhsB)
 
 		lhs.Mul(lhs, Si)
@@ -420,8 +424,8 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 		rhsA := new(big.Int).Mul(P[i], sig.H)
 
 		t.Mul(sig.H, sig.U[i])
-		t.Quo(t, sig.R)
-		rhsB := new(big.Int).Mul(t, sig.S1Pub)
+		t.Quo(t, R)
+		rhsB := new(big.Int).Mul(t, sig.S1Verify)
 		rhs := new(big.Int).Sub(rhsA, rhsB)
 
 		rhs.Mul(rhs, Si)

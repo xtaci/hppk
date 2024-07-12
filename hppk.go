@@ -154,12 +154,6 @@ RETRY:
 	}, nil
 }
 
-// ring computes R*v on the ring S
-func ring(R *big.Int, S *big.Int, v *big.Int) {
-	v.Mul(R, v)
-	v.Mod(v, S)
-}
-
 // Encrypt encrypts a message using the given public key.
 func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
 	// Convert the message to a big integer
@@ -291,10 +285,10 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 
 // Signature represents a digital signature in the HPPK protocol.
 type Signature struct {
-	Beta         *big.Int
-	F, H         *big.Int
+	Beta         *big.Int // a randomly choosen number from Fp
+	F, H         *big.Int //
 	S1Pub, S2Pub *big.Int
-	Q, P, U, V   []*big.Int
+	U, V         []*big.Int
 	R            *big.Int
 }
 
@@ -411,7 +405,7 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 	sumRhs := new(big.Int)
 
 	Si := big.NewInt(1)
-	for i := 0; i < len(sig.Q); i++ {
+	for i := 0; i < len(Q); i++ {
 		lhsA := new(big.Int).Mul(Q[i], sig.F)
 
 		t.Mul(sig.F, sig.V[i])
@@ -464,4 +458,10 @@ func createCoPrimePair(p *big.Int) (R *big.Int, S *big.Int, err error) {
 			return R, S, nil
 		}
 	}
+}
+
+// ring computes R*v on the ring S
+func ring(R *big.Int, S *big.Int, v *big.Int) {
+	v.Mul(R, v)
+	v.Mod(v, S)
 }

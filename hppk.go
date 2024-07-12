@@ -164,13 +164,13 @@ func (priv *PrivateKey) Encrypt(pk *PublicKey, msg []byte) (P *big.Int, Q *big.I
 	*/
 
 	// Initialize Si with the secret message
-	Si := new(big.Int).Set(secret)
+	Si := big.NewInt(1)
 
 	// Compute the encrypted values P and Q
-	P = new(big.Int).Set(pk.P[0])
-	Q = new(big.Int).Set(pk.Q[0])
+	P = new(big.Int)
+	Q = new(big.Int)
 	t := new(big.Int)
-	for i := 1; i < len(pk.P); i++ {
+	for i := 0; i < len(pk.P); i++ {
 		// SiNoise is commented out
 		//SiNoise.Mul(Si, noise)
 		//SiNoise.Mod(SiNoise, pk.Prime)

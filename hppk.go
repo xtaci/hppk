@@ -44,6 +44,21 @@ type PublicKey struct {
 	Q []*big.Int // Coefficients of the polynomial Q(x)
 }
 
+// Signature represents a digital signature in the HPPK protocol.
+type Signature struct {
+	Beta               *big.Int   // a randomly choosen number from Fp
+	F, H               *big.Int   // F & H is calculated from the private key
+	S1Verify, S2Verify *big.Int   // S1Verify := beta * s1 mod p, S2Verify := beta * s2 mod p
+	U, V               []*big.Int // U = ⌊ R*P /S1 ⌋, V = ⌊ R*Q /S2 ⌋
+	K                  int        // R = 2^K
+}
+
+// KEM represents the Encapsulated Key in the HPPK protocol.
+type KEM struct {
+	P []*big.Int
+	Q []*big.Int
+}
+
 // GenerateKey generates a new HPPK private key with the given order and default prime number.
 func GenerateKey(order int) (*PrivateKey, error) {
 	// Ensure the order is at least 5
@@ -165,50 +180,50 @@ RETRY:
 }
 
 // Encrypt encrypts a message using the given public key and custom prime number.
-func EncryptWithPrime(pub *PublicKey, msg []byte, prime *big.Int) (P []*big.Int, Q []*big.Int, err error) {
+func EncryptWithPrime(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	return encrypt(pub, msg, prime)
 }
 
 // Encrypt encrypts a message using the given public key and default prime number.
-func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
+func Encrypt(pub *PublicKey, msg []byte) (kem *KEM, err error) {
 	prime, _ := big.NewInt(0).SetString(DefaultPrime, 10)
 	return encrypt(pub, msg, prime)
 }
 
 // encrypt encrypts a message using the given public key.
-func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (P []*big.Int, Q []*big.Int, err error) {
+func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
 	if secret.Cmp(prime) >= 0 {
-		return nil, nil, errors.New(ERR_MSG_DATA_EXCEEDED)
+		return nil, errors.New(ERR_MSG_DATA_EXCEEDED)
 	}
 
 	// Ensure fields in the public key are valid
 	if pub.P == nil || pub.Q == nil {
-		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+		return nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 	}
 
 	if len(pub.P) != len(pub.Q) {
-		return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+		return nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 	}
 
 	for i := 0; i < len(pub.P); i++ {
 		if pub.P[i] == nil || pub.Q[i] == nil {
-			return nil, nil, errors.New(ERR_MSG_INVALID_PUBKEY)
+			return nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 		}
 	}
 
 	// Generate a random noise
 	noise, err := rand.Int(rand.Reader, prime)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Initialize Si with the secret message
 	Si := big.NewInt(1)
 	// Compute the encrypted values P and Q
-	P = make([]*big.Int, len(pub.P))
-	Q = make([]*big.Int, len(pub.Q))
+	P := make([]*big.Int, len(pub.P))
+	Q := make([]*big.Int, len(pub.Q))
 
 	for i := 0; i < len(pub.P); i++ {
 		noised := new(big.Int).Mul(noise, Si)
@@ -222,19 +237,21 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (P []*big.Int, Q []*big
 		Si.Mod(Si, prime)
 	}
 
-	return P, Q, nil
+	return &KEM{
+		P: P,
+		Q: Q}, nil
 }
 
 // Decrypt decrypts the encrypted values P and Q using the private key.
-func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, err error) {
+func (priv *PrivateKey) Decrypt(kem *KEM) (secret *big.Int, err error) {
 	prime := priv.Prime
 	// Sanity check
-	if len(P) != len(Q) {
+	if len(kem.P) != len(kem.Q) {
 		return nil, errors.New(ERR_MSG_INVALID_KEM)
 	}
 
-	for i := 0; i < len(P); i++ {
-		if P[i] == nil || Q[i] == nil {
+	for i := 0; i < len(kem.P); i++ {
+		if kem.P[i] == nil || kem.Q[i] == nil {
 			return nil, errors.New(ERR_MSG_INVALID_KEM)
 		}
 	}
@@ -245,12 +262,12 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 
 	pbar := new(big.Int)
 	qbar := new(big.Int)
-	for i := 0; i < len(P); i++ {
-		t := new(big.Int).Mul(P[i], revR1)
+	for i := 0; i < len(kem.P); i++ {
+		t := new(big.Int).Mul(kem.P[i], revR1)
 		t.Mod(t, priv.S1)
 		pbar.Add(pbar, t)
 
-		t = new(big.Int).Mul(Q[i], revR2)
+		t = new(big.Int).Mul(kem.Q[i], revR2)
 		t.Mod(t, priv.S2)
 		qbar.Add(qbar, t)
 	}
@@ -303,15 +320,6 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 	x.Mod(x, prime)
 
 	return x, nil
-}
-
-// Signature represents a digital signature in the HPPK protocol.
-type Signature struct {
-	Beta               *big.Int   // a randomly choosen number from Fp
-	F, H               *big.Int   // F & H is calculated from the private key
-	S1Verify, S2Verify *big.Int   // S1Verify := beta * s1 mod p, S2Verify := beta * s2 mod p
-	U, V               []*big.Int // U = ⌊ R*P /S1 ⌋, V = ⌊ R*Q /S2 ⌋
-	K                  int        // R = 2^K
 }
 
 // Sign the message digest, returning a signature.

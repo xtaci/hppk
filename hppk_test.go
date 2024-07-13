@@ -24,11 +24,11 @@ func TestKEM(t *testing.T) {
 	assert.Nil(t, err)
 
 	secret := []byte("hello quantum")
-	Ps, Qs, err := Encrypt(&alice.PublicKey, secret)
+	kem, err := Encrypt(&alice.PublicKey, secret)
 	assert.Nil(t, err)
 	t.Log("secret:", secret)
 
-	x, err := alice.Decrypt(Ps, Qs)
+	x, err := alice.Decrypt(kem)
 	assert.Nil(t, err)
 	t.Log("x:", x.Bytes())
 

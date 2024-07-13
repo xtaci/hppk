@@ -55,8 +55,8 @@ type Signature struct {
 
 // KEM represents the Encapsulated Key in the HPPK protocol.
 type KEM struct {
-	P []*big.Int
-	Q []*big.Int
+	P *big.Int
+	Q *big.Int
 }
 
 // GenerateKey generates a new HPPK private key with the given order and default prime number.
@@ -70,11 +70,11 @@ RETRY:
 	// Convert the prime constant to a big.Int
 	prime, _ := big.NewInt(0).SetString(DefaultPrime, 10)
 	// Generate coprime pairs (r1, s1) and (r1, s1)
-	r1, s1, err := createCoPrimePair(prime)
+	r1, s1, err := createCoPrimePair(order+2, prime)
 	if err != nil {
 		return nil, err
 	}
-	r2, s2, err := createCoPrimePair(prime)
+	r2, s2, err := createCoPrimePair(order+2, prime)
 	if err != nil {
 		return nil, err
 	}
@@ -218,74 +218,67 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	if err != nil {
 		return nil, err
 	}
+	noise = noise.Exp(big.NewInt(2), big.NewInt(1800), nil)
 
 	// Initialize Si with the secret message
 	Si := big.NewInt(1)
 	// Compute the encrypted values P and Q
-	P := make([]*big.Int, len(pub.P))
-	Q := make([]*big.Int, len(pub.Q))
+	P := new(big.Int)
+	Q := new(big.Int)
 
+	t := new(big.Int)
 	for i := 0; i < len(pub.P); i++ {
 		noised := new(big.Int).Mul(noise, Si)
 		noised.Mod(noised, prime)
 
-		P[i] = new(big.Int).Mul(noised, pub.P[i])
-		Q[i] = new(big.Int).Mul(noised, pub.Q[i])
+		P.Add(P, t.Mul(noised, pub.P[i]))
+		Q.Add(Q, t.Mul(noised, pub.Q[i]))
 
 		// Si = secret^i
 		Si.Mul(Si, secret)
 		Si.Mod(Si, prime)
 	}
 
-	return &KEM{
-		P: P,
-		Q: Q}, nil
+	return &KEM{P: P, Q: Q}, nil
 }
 
 // Decrypt decrypts the encrypted values P and Q using the private key.
 func (priv *PrivateKey) Decrypt(kem *KEM) (secret *big.Int, err error) {
 	prime := priv.Prime
 	// Sanity check
-	if len(kem.P) != len(kem.Q) {
+	if kem == nil || kem.P == nil || kem.Q == nil {
 		return nil, errors.New(ERR_MSG_INVALID_KEM)
-	}
-
-	for i := 0; i < len(kem.P); i++ {
-		if kem.P[i] == nil || kem.Q[i] == nil {
-			return nil, errors.New(ERR_MSG_INVALID_KEM)
-		}
 	}
 
 	// Symmetric decryption using private key components
 	revR1 := new(big.Int).ModInverse(priv.R1, priv.S1)
 	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
 
-	pbar := new(big.Int)
-	qbar := new(big.Int)
-	for i := 0; i < len(kem.P); i++ {
-		t := new(big.Int).Mul(kem.P[i], revR1)
-		t.Mod(t, priv.S1)
-		pbar.Add(pbar, t)
-
-		t = new(big.Int).Mul(kem.Q[i], revR2)
-		t.Mod(t, priv.S2)
-		qbar.Add(qbar, t)
-	}
-
+	pbar := new(big.Int).Set(kem.P)
+	qbar := new(big.Int).Set(kem.Q)
+	pbar.Mul(pbar, revR1)
+	qbar.Mul(qbar, revR2)
+	pbar.Mod(pbar, priv.S1)
+	qbar.Mod(qbar, priv.S2)
 	pbar.Mod(pbar, prime)
 	qbar.Mod(qbar, prime)
 
 	// Explanation of the decryption process:
-	// pbar := Bn * (f1*x + f0) mod p
-	// qbar := Bn * (h1*x + h0) mod p
+	// pbar := Bn * (f1*(noise*x) + f0 * noise * 1) mod p
+	// qbar := Bn * (h1*(noise*x) + h0 * noise * 1) mod p
 	//
 	// Multiplying both sides by the inverse of Bn gives:
-	// pbar*revBn(s) := (f1x + f0) mod p
-	// qbar*revBn(s) := (h1x + h0) mod p
+	// pbar*revBn(s) := (f1 * noise *x + f0 * noise * 1) mod p
+	// qbar*revBn(s) := (h1 * noise *x + h0 * noise * 1) mod p
+	//
+	// Noise elimination:
+	// revNoise * pbar*revBn(s) := (f1 * x + f0 ) mod p
+	// revNoise * qbar*revBn(s) := (h1 * x + h0 ) mod p
+	//
 	//
 	// Aligning both equations:
-	// pbar * qbar * revBn(s) := (f1x + f0) * qbar mod p
-	// pbar * qbar * revBn(s) := (h1x + h0) * pbar mod p
+	// revNoise * pbar * qbar * revBn(s) := (f1 * x + f0) * qbar mod p
+	// revNoise * pbar * qbar * revBn(s) := (h1 * x + h0) * pbar mod p
 	//
 	// Thus:
 	// (f1x + f0) * qbar == (h1x + h0) * pbar mod p
@@ -486,22 +479,25 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 }
 
 // createCoPrimePair generates a pair of coprime numbers (R, S) greater than the given prime p.
-func createCoPrimePair(p *big.Int) (R *big.Int, S *big.Int, err error) {
+func createCoPrimePair(polyTerms int, p *big.Int) (R *big.Int, S *big.Int, err error) {
 	one := big.NewInt(1)
-	psquared := new(big.Int).Mul(p, p)
+
+	bitLength := 2*p.BitLen() + big.NewInt(int64(polyTerms)).BitLen()
+	L := big.NewInt(1)
+	L.Lsh(L, uint(bitLength))
 
 	for {
 		R, err = rand.Int(rand.Reader, p)
 		if err != nil {
 			return nil, nil, err
 		}
-		R.Add(R, psquared)
+		R.Add(R, L)
 
 		S, err = rand.Int(rand.Reader, p)
 		if err != nil {
 			return nil, nil, err
 		}
-		S.Add(S, psquared)
+		S.Add(S, L)
 
 		// Check if GCD(R, S) == 1, which means R and S are coprime
 		if new(big.Int).GCD(nil, nil, R, S).Cmp(one) == 0 {

@@ -55,7 +55,7 @@ func BenchmarkGenerateKey(b *testing.B) {
 
 func TestRing(t *testing.T) {
 	prime := big.NewInt(977)
-	r0, s0, _ := createCoPrimePair(prime)
+	r0, s0, _ := createCoPrimePair(10, prime)
 	revR0 := new(big.Int).ModInverse(r0, s0)
 	log.Println(r0, s0, revR0)
 	x, _ := rand.Int(rand.Reader, prime)

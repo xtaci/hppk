@@ -20,6 +20,7 @@ const (
 
 // PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
+	Prime     *big.Int // Prime number used for cryptographic operations
 	R1, S1    *big.Int // r1 and s1 are coprimes
 	R2, S2    *big.Int // r2 and s2 are coprimes
 	F0, F1    *big.Int // f(x) = f1x + f0
@@ -29,9 +30,8 @@ type PrivateKey struct {
 
 // PublicKey represents a public key in the HPPK protocol.
 type PublicKey struct {
-	Prime *big.Int   // Prime number used for cryptographic operations
-	P     []*big.Int // Coefficients of the polynomial P(x)
-	Q     []*big.Int // Coefficients of the polynomial Q(x)
+	P []*big.Int // Coefficients of the polynomial P(x)
+	Q []*big.Int // Coefficients of the polynomial Q(x)
 }
 
 // GenerateKey generates a new HPPK private key with the given order and default prime number.
@@ -138,27 +138,38 @@ RETRY:
 
 	// Return the generated private key
 	return &PrivateKey{
-		R1: r1,
-		S1: s1,
-		R2: r2,
-		S2: s2,
-		F0: f0,
-		F1: f1,
-		H0: h0,
-		H1: h1,
+		Prime: prime,
+		R1:    r1,
+		S1:    s1,
+		R2:    r2,
+		S2:    s2,
+		F0:    f0,
+		F1:    f1,
+		H0:    h0,
+		H1:    h1,
 		PublicKey: PublicKey{
-			Prime: prime,
-			P:     P,
-			Q:     Q,
+			P: P,
+			Q: Q,
 		},
 	}, nil
 }
 
-// Encrypt encrypts a message using the given public key.
+// Encrypt encrypts a message using the given public key and custom prime number.
+func EncryptWithPrime(pub *PublicKey, msg []byte, prime *big.Int) (P []*big.Int, Q []*big.Int, err error) {
+	return encrypt(pub, msg, prime)
+}
+
+// Encrypt encrypts a message using the given public key and default prime number.
 func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error) {
+	prime, _ := big.NewInt(0).SetString(DefaultPrime, 10)
+	return encrypt(pub, msg, prime)
+}
+
+// encrypt encrypts a message using the given public key.
+func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (P []*big.Int, Q []*big.Int, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
-	if secret.Cmp(pub.Prime) >= 0 {
+	if secret.Cmp(prime) >= 0 {
 		return nil, nil, errors.New(ERR_MSG_DATA_EXCEEDED)
 	}
 
@@ -178,7 +189,7 @@ func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error)
 	}
 
 	// Generate a random noise
-	noise, err := rand.Int(rand.Reader, pub.Prime)
+	noise, err := rand.Int(rand.Reader, prime)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,14 +202,14 @@ func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error)
 
 	for i := 0; i < len(pub.P); i++ {
 		noised := new(big.Int).Mul(noise, Si)
-		noised.Mod(noised, pub.Prime)
+		noised.Mod(noised, prime)
 
 		P[i] = new(big.Int).Mul(noised, pub.P[i])
 		Q[i] = new(big.Int).Mul(noised, pub.Q[i])
 
 		// Si = secret^i
 		Si.Mul(Si, secret)
-		Si.Mod(Si, pub.Prime)
+		Si.Mod(Si, prime)
 	}
 
 	return P, Q, nil
@@ -206,6 +217,7 @@ func Encrypt(pub *PublicKey, msg []byte) (P []*big.Int, Q []*big.Int, err error)
 
 // Decrypt decrypts the encrypted values P and Q using the private key.
 func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, err error) {
+	prime := priv.Prime
 	// Sanity check
 	if len(P) != len(Q) {
 		return nil, errors.New(ERR_MSG_INVALID_KEM)
@@ -233,8 +245,8 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 		qbar.Add(qbar, t)
 	}
 
-	pbar.Mod(pbar, priv.PublicKey.Prime)
-	qbar.Mod(qbar, priv.PublicKey.Prime)
+	pbar.Mod(pbar, prime)
+	qbar.Mod(qbar, prime)
 
 	// Explanation of the decryption process:
 	// pbar := Bn * (f1*x + f0) mod p
@@ -258,27 +270,27 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 	h0pbar := new(big.Int).Mul(priv.H0, pbar)
 	h1pbar := new(big.Int).Mul(priv.H1, pbar)
 
-	f1qbar.Mod(f1qbar, priv.PublicKey.Prime)
-	f0qbar.Mod(f0qbar, priv.PublicKey.Prime)
-	h1pbar.Mod(h1pbar, priv.PublicKey.Prime)
-	h0pbar.Mod(h0pbar, priv.PublicKey.Prime)
+	f1qbar.Mod(f1qbar, prime)
+	f0qbar.Mod(f0qbar, prime)
+	h1pbar.Mod(h1pbar, prime)
+	h0pbar.Mod(h0pbar, prime)
 
 	a := new(big.Int)
-	revh1pbar := new(big.Int).Sub(priv.PublicKey.Prime, h1pbar)
+	revh1pbar := new(big.Int).Sub(prime, h1pbar)
 	a.Add(f1qbar, revh1pbar)
-	a.Mod(a, priv.PublicKey.Prime)
+	a.Mod(a, prime)
 
 	b := new(big.Int)
-	revh0pbar := new(big.Int).Sub(priv.PublicKey.Prime, h0pbar)
+	revh0pbar := new(big.Int).Sub(prime, h0pbar)
 	b.Add(f0qbar, revh0pbar)
-	b.Mod(b, priv.PublicKey.Prime)
+	b.Mod(b, prime)
 
 	// x := -b/a
-	revB := new(big.Int).Sub(priv.PublicKey.Prime, b)
-	revA := new(big.Int).ModInverse(a, priv.PublicKey.Prime)
+	revB := new(big.Int).Sub(prime, b)
+	revA := new(big.Int).ModInverse(a, prime)
 
 	x := new(big.Int).Mul(revA, revB)
-	x.Mod(x, priv.PublicKey.Prime)
+	x.Mod(x, prime)
 
 	return x, nil
 }
@@ -296,14 +308,15 @@ type Signature struct {
 func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	md := new(big.Int).SetBytes(digest)
 
+	prime := priv.Prime
 	// alpha is a randomly choosen number from Fp
-	alpha, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
+	alpha, err := rand.Int(rand.Reader, prime)
 	if err != nil {
 		return nil, err
 	}
 
 	// beta is a randomly choosen number from Fp
-	beta, err := rand.Int(rand.Reader, priv.PublicKey.Prime)
+	beta, err := rand.Int(rand.Reader, prime)
 	if err != nil {
 		return nil, err
 	}
@@ -313,12 +326,12 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	alphaFx := new(big.Int).Mul(priv.F1, md)
 	alphaFx.Add(alphaFx, priv.F0)
 	alphaFx.Mul(alphaFx, alpha)
-	alphaFx.Mod(alphaFx, priv.PublicKey.Prime)
+	alphaFx.Mod(alphaFx, prime)
 
 	alphaHx := new(big.Int).Mul(priv.H1, md)
 	alphaHx.Add(alphaHx, priv.H0)
 	alphaHx.Mul(alphaHx, alpha)
-	alphaHx.Mod(alphaHx, priv.PublicKey.Prime)
+	alphaHx.Mod(alphaHx, prime)
 
 	// calculate F & H
 	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
@@ -333,9 +346,9 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 
 	// calculate V & U
 	S1Pub := new(big.Int).Mul(beta, priv.S1)
-	S1Pub.Mod(S1Pub, priv.PublicKey.Prime)
+	S1Pub.Mod(S1Pub, prime)
 	S2Pub := new(big.Int).Mul(beta, priv.S2)
-	S2Pub.Mod(S2Pub, priv.PublicKey.Prime)
+	S2Pub.Mod(S2Pub, prime)
 
 	// Initiate V, U
 	V := make([]*big.Int, len(priv.P))
@@ -375,8 +388,18 @@ func (priv *PrivateKey) Public() *PublicKey {
 	return &priv.PublicKey
 }
 
-// VerifySignature verifies the signature of the message digest using the public key.
+// VerifySignature verifies the signature of the message digest using the public key and given prime
+func VerifySignatureWithPrime(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {
+	return verifySignature(sig, digest, pub, prime)
+}
+
+// VerifySignature verifies the signature of the message digest using the public key and default prime
 func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
+	prime, _ := big.NewInt(0).SetString(DefaultPrime, 10)
+	return verifySignature(sig, digest, pub, prime)
+}
+
+func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {
 	// Ensure fields in the public key are valid
 	if pub.P == nil || pub.Q == nil {
 		return false
@@ -397,10 +420,10 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 	P := make([]*big.Int, len(sig.V))
 	for i := 0; i < len(Q); i++ {
 		Q[i] = new(big.Int).Mul(pub.Q[i], sig.Beta)
-		Q[i].Mod(Q[i], pub.Prime)
+		Q[i].Mod(Q[i], prime)
 
 		P[i] = new(big.Int).Mul(pub.P[i], sig.Beta)
-		P[i].Mod(P[i], pub.Prime)
+		P[i].Mod(P[i], prime)
 	}
 
 	// Verify signature
@@ -424,7 +447,7 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 
 		lhs.Mul(lhs, Si)
 		sumLhs.Add(sumLhs, lhs)
-		sumLhs.Mod(sumLhs, pub.Prime)
+		sumLhs.Mod(sumLhs, prime)
 
 		rhsA := new(big.Int).Mul(P[i], sig.H)
 
@@ -435,10 +458,10 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 
 		rhs.Mul(rhs, Si)
 		sumRhs.Add(sumRhs, rhs)
-		sumRhs.Mod(sumRhs, pub.Prime)
+		sumRhs.Mod(sumRhs, prime)
 
 		Si.Mul(Si, md)
-		Si.Mod(Si, pub.Prime)
+		Si.Mod(Si, prime)
 	}
 
 	return sumLhs.Cmp(sumRhs) == 0

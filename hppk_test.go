@@ -15,8 +15,8 @@ func TestGenerateKey(t *testing.T) {
 	assert.Nil(t, err, "GenerateKey() failed")
 	gcd := new(big.Int)
 	one := big.NewInt(1)
-	assert.Equal(t, gcd.GCD(nil, nil, key.r1, key.s1), one, "GCD(r0, s0) != 1")
-	assert.Equal(t, gcd.GCD(nil, nil, key.r2, key.s2), one, "GCD(r1, s1) != 1")
+	assert.Equal(t, gcd.GCD(nil, nil, key.R1, key.S1), one, "GCD(r0, s0) != 1")
+	assert.Equal(t, gcd.GCD(nil, nil, key.R2, key.S2), one, "GCD(r1, s1) != 1")
 }
 
 func TestKEM(t *testing.T) {

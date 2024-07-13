@@ -6,8 +6,8 @@ import (
 	"math/big"    // Importing package for handling arbitrary precision arithmetic
 )
 
-// PRIME is a large prime number used in cryptographic operations.
-const PRIME = "32317006071311007300714876688669951960444102669715484032130345427524655138867890893197201411522913463688717960921898019494119559150490921095088152386448283120630877367300996091750197750389652106796057638384067568276792218642619756161838094338476170470581645852036305042887575891541065808607552399123930385521914333389668342420684974786564569494856176035326322058077805659331026192708460314150258592864177116725943603718461857357598351152301645904403697613233287231227125684710820209725157101726931323469678542580656697935045997268352998638215525166389437335543602135433229604645318478604952148193555853611059596231637"
+// DefaultPrime is a large prime number used in cryptographic operations.
+const DefaultPrime = "32317006071311007300714876688669951960444102669715484032130345427524655138867890893197201411522913463688717960921898019494119559150490921095088152386448283120630877367300996091750197750389652106796057638384067568276792218642619756161838094338476170470581645852036305042887575891541065808607552399123930385521914333389668342420684974786564569494856176035326322058077805659331026192708460314150258592864177116725943603718461857357598351152301645904403697613233287231227125684710820209725157101726931323469678542580656697935045997268352998638215525166389437335543602135433229604645318478604952148193555853611059596231637"
 
 // Error messages for various conditions.
 const (
@@ -20,10 +20,10 @@ const (
 
 // PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
-	r1, s1    *big.Int // r1 and s1 are coprimes
-	r2, s2    *big.Int // r2 and s2 are coprimes
-	f0, f1    *big.Int // f(x) = f1x + f0
-	h0, h1    *big.Int // h(x) = h1x + h0
+	R1, S1    *big.Int // r1 and s1 are coprimes
+	R2, S2    *big.Int // r2 and s2 are coprimes
+	F0, F1    *big.Int // f(x) = f1x + f0
+	H0, H1    *big.Int // h(x) = h1x + h0
 	PublicKey          // Embedding PublicKey structure
 }
 
@@ -43,7 +43,7 @@ func GenerateKey(order int) (*PrivateKey, error) {
 
 RETRY:
 	// Convert the prime constant to a big.Int
-	prime, _ := big.NewInt(0).SetString(PRIME, 10)
+	prime, _ := big.NewInt(0).SetString(DefaultPrime, 10)
 	// Generate coprime pairs (r1, s1) and (r1, s1)
 	r1, s1, err := createCoPrimePair(prime)
 	if err != nil {
@@ -138,14 +138,14 @@ RETRY:
 
 	// Return the generated private key
 	return &PrivateKey{
-		r1: r1,
-		s1: s1,
-		r2: r2,
-		s2: s2,
-		f0: f0,
-		f1: f1,
-		h0: h0,
-		h1: h1,
+		R1: r1,
+		S1: s1,
+		R2: r2,
+		S2: s2,
+		F0: f0,
+		F1: f1,
+		H0: h0,
+		H1: h1,
 		PublicKey: PublicKey{
 			Prime: prime,
 			P:     P,
@@ -218,18 +218,18 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 	}
 
 	// Symmetric decryption using private key components
-	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
-	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
+	revR1 := new(big.Int).ModInverse(priv.R1, priv.S1)
+	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
 
 	pbar := new(big.Int)
 	qbar := new(big.Int)
 	for i := 0; i < len(P); i++ {
 		t := new(big.Int).Mul(P[i], revR1)
-		t.Mod(t, priv.s1)
+		t.Mod(t, priv.S1)
 		pbar.Add(pbar, t)
 
 		t = new(big.Int).Mul(Q[i], revR2)
-		t.Mod(t, priv.s2)
+		t.Mod(t, priv.S2)
 		qbar.Add(qbar, t)
 	}
 
@@ -253,10 +253,10 @@ func (priv *PrivateKey) Decrypt(P []*big.Int, Q []*big.Int) (secret *big.Int, er
 	//
 
 	// Solving the equation a * x + b = 0 for x
-	f1qbar := new(big.Int).Mul(priv.f1, qbar)
-	f0qbar := new(big.Int).Mul(priv.f0, qbar)
-	h0pbar := new(big.Int).Mul(priv.h0, pbar)
-	h1pbar := new(big.Int).Mul(priv.h1, pbar)
+	f1qbar := new(big.Int).Mul(priv.F1, qbar)
+	f0qbar := new(big.Int).Mul(priv.F0, qbar)
+	h0pbar := new(big.Int).Mul(priv.H0, pbar)
+	h1pbar := new(big.Int).Mul(priv.H1, pbar)
 
 	f1qbar.Mod(f1qbar, priv.PublicKey.Prime)
 	f0qbar.Mod(f0qbar, priv.PublicKey.Prime)
@@ -310,31 +310,31 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 
 	// calculate alpha * f(md) mod p
 	// f(x) = f1* x + f0
-	alphaFx := new(big.Int).Mul(priv.f1, md)
-	alphaFx.Add(alphaFx, priv.f0)
+	alphaFx := new(big.Int).Mul(priv.F1, md)
+	alphaFx.Add(alphaFx, priv.F0)
 	alphaFx.Mul(alphaFx, alpha)
 	alphaFx.Mod(alphaFx, priv.PublicKey.Prime)
 
-	alphaHx := new(big.Int).Mul(priv.h1, md)
-	alphaHx.Add(alphaHx, priv.h0)
+	alphaHx := new(big.Int).Mul(priv.H1, md)
+	alphaHx.Add(alphaHx, priv.H0)
 	alphaHx.Mul(alphaHx, alpha)
 	alphaHx.Mod(alphaHx, priv.PublicKey.Prime)
 
 	// calculate F & H
-	revR2 := new(big.Int).ModInverse(priv.r2, priv.s2)
+	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
 	F := new(big.Int)
 	F.Mul(revR2, alphaFx)
-	F.Mod(F, priv.s2)
+	F.Mod(F, priv.S2)
 
-	revR1 := new(big.Int).ModInverse(priv.r1, priv.s1)
+	revR1 := new(big.Int).ModInverse(priv.R1, priv.S1)
 	H := new(big.Int)
 	H.Mul(revR1, alphaHx)
-	H.Mod(H, priv.s1)
+	H.Mod(H, priv.S1)
 
 	// calculate V & U
-	S1Pub := new(big.Int).Mul(beta, priv.s1)
+	S1Pub := new(big.Int).Mul(beta, priv.S1)
 	S1Pub.Mod(S1Pub, priv.PublicKey.Prime)
-	S2Pub := new(big.Int).Mul(beta, priv.s2)
+	S2Pub := new(big.Int).Mul(beta, priv.S2)
 	S2Pub.Mod(S2Pub, priv.PublicKey.Prime)
 
 	// Initiate V, U
@@ -342,19 +342,19 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	U := make([]*big.Int, len(priv.Q))
 
 	// make K >= L+ 32
-	K := priv.s1.BitLen()
-	if priv.s2.BitLen() > K {
-		K = priv.s2.BitLen()
+	K := priv.S1.BitLen()
+	if priv.S2.BitLen() > K {
+		K = priv.S2.BitLen()
 	}
 	K += 32
 	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(K)), nil)
 
 	for i := 0; i < len(V); i++ {
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
-		V[i].Quo(V[i], priv.s2)
+		V[i].Quo(V[i], priv.S2)
 
 		U[i] = new(big.Int).Mul(priv.P[i], R)
-		U[i].Quo(U[i], priv.s1)
+		U[i].Quo(U[i], priv.S1)
 	}
 
 	sig := &Signature{
@@ -368,6 +368,11 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 		K:        K,
 	}
 	return sig, nil
+}
+
+// Public returns the public key of the private key.
+func (priv *PrivateKey) Public() *PublicKey {
+	return &priv.PublicKey
 }
 
 // VerifySignature verifies the signature of the message digest using the public key.

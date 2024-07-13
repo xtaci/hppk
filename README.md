@@ -1,4 +1,5 @@
 # HPPK: Homomorphic Polynomial Public Key
+![image](https://github.com/user-attachments/assets/83f59dcf-efb7-4333-a0a5-fd61b542d972)
 
 [![GoDoc][1]][2] [![Go Report Card][3]][4]
 

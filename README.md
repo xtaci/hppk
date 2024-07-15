@@ -27,6 +27,7 @@ For a detailed explanation of the underlying theory and security proofs, please 
 - **Efficient Key Encapsulation Mechanism (KEM)**: Securely exchanges symmetric keys.
 - **Strong Digital Signatures (DS)**: Provides authentication and integrity verification of messages.
 - **Scalable and Efficient**: Suitable for various applications, ranging from small-scale systems to large, complex networks.
+![image](https://github.com/user-attachments/assets/37b88d3c-9bd6-4436-9837-1a0b078e5ac1)
 
 ## Installation
 
@@ -34,14 +35,14 @@ To use HPPK, you need to have Go installed. You can download and install Go from
 
 1. Clone the repository:
 
-    ```bash
+    ```console
     git clone https://github.com/xtaci/hppk.git
     cd hppk
     ```
 
 2. Build the project:
 
-    ```bash
+    ```console
     go build
     ```
 

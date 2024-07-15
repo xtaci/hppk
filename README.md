@@ -51,6 +51,8 @@ To use HPPK, you need to have Go installed. You can download and install Go from
 To generate a new pair of private and public keys:
 
 ```go
+package main
+
 import (
     "fmt"
     "github.com/xtaci/hppk"
@@ -67,7 +69,7 @@ func main() {
 }
 ```
 
-### Encrypting a Message
+### Encryption
 
 To encrypt a message using the public key:
 
@@ -75,37 +77,27 @@ To encrypt a message using the public key:
 package main
 
 import (
-    "crypto/rand"
     "fmt"
-    "math/big"
     "github.com/xtaci/hppk"
 )
 
 func main() {
-    // Generate a key pair
-    pk, sk, err := hppk.GenerateKey(rand.Reader, 512)
+    privKey, err := hppk.GenerateKey(10)
     if err != nil {
-        fmt.Println("Error generating keys:", err)
-        return
+        panic(err)
     }
+    pubKey := privKey.Public()
 
-    // Message to encrypt
-    message := []byte("Hello, World!")
-
-    // Encrypt the message
-    P, Q, err := hppk.Encrypt(pk, message)
+    message := []byte("hello world")
+    kem, err := hppk.Encrypt(pubKey, message)
     if err != nil {
-        fmt.Println("Error encrypting message:", err)
-        return
+        panic(err)
     }
-
-    fmt.Println("Encrypted P:", P)
-    fmt.Println("Encrypted Q:", Q)
+    fmt.Printf("Encrypted KEM: %+v\n", kem)
 }
-
 ```
 
-### Decrypting a Message
+### Decryption
 
 To decrypt the encrypted values using the private key:
 
@@ -115,62 +107,82 @@ package main
 import (
     "fmt"
     "github.com/xtaci/hppk"
-    "math/big"
 )
 
 func main() {
-    // Assuming pk, sk, P, and Q are already defined as in the encryption example
-
-    // Decrypt the message
-    decryptedMessage, err := sk.Decrypt(P, Q)
+    privKey, err := hppk.GenerateKey(10)
     if err != nil {
-        fmt.Println("Error decrypting message:", err)
-        return
+        panic(err)
+    }
+    pubKey := privKey.Public()
+
+    message := []byte("hello world")
+    kem, err := hppk.Encrypt(pubKey, message)
+    if err != nil {
+        panic(err)
     }
 
-    fmt.Println("Decrypted Message:", string(decryptedMessage.Bytes()))
+    decryptedMessage, err := privKey.Decrypt(kem)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Decrypted Message: %s\n", decryptedMessage)
 }
-
 ```
 
-### Signing and VerifySignature
+### Signing
 ```go
 package main
 
 import (
-	"crypto/rand"
-	"fmt"
-	"math/big"
-	"github.com/xtaci/hppk"
+    "crypto/sha256"
+    "fmt"
+    "github.com/xtaci/hppk"
 )
 
 func main() {
-	// Generate a new private key for signing
-	order := 10 // Example order, should be >= 5
-	privateKey, err := hppk.GenerateKey(order)
-	if err != nil {
-		fmt.Println("Error generating private key:", err)
-		return
-	}
+    privKey, err := hppk.GenerateKey(10)
+    if err != nil {
+        panic(err)
+    }
 
-	// Define a message to sign
-	message := []byte("Hello, world!")
-
-	// Sign the message using the private key
-	signature, err := privateKey.Sign(message)
-	if err != nil {
-		fmt.Println("Error signing message:", err)
-		return
-	}
-
-	// Verify the signature using the corresponding public key
-	isValid := hppk.VerifySignature(signature, message, &privateKey.PublicKey)
-	if isValid {
-		fmt.Println("Signature is valid.")
-	} else {
-		fmt.Println("Signature is not valid.")
-	}
+    digest := sha256.Sum256([]byte("hello world"))
+    signature, err := privKey.Sign(digest[:])
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Signature: %+v\n", signature)
 }
+
+```
+
+### Verification
+```go
+package main
+
+import (
+    "crypto/sha256"
+    "fmt"
+    "github.com/xtaci/hppk"
+)
+
+func main() {
+    privKey, err := hppk.GenerateKey(10)
+    if err != nil {
+        panic(err)
+    }
+    pubKey := privKey.Public()
+
+    digest := sha256.Sum256([]byte("hello world"))
+    signature, err := privKey.Sign(digest[:])
+    if err != nil {
+        panic(err)
+    }
+
+    isValid := hppk.VerifySignature(signature, digest[:], pubKey)
+    fmt.Printf("Signature valid: %v\n", isValid)
+}
+
 
 ```
 

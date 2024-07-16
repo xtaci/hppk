@@ -26,6 +26,7 @@ const (
 	ERR_MSG_DATA_EXCEEDED   = "the secret to encrypt is not in the GF(p)"
 	ERR_MSG_INVALID_PUBKEY  = "public key is invalid"
 	ERR_MSG_INVALID_KEM     = "invalid kem value"
+	ERR_MSG_INVALID_PRIME   = "invalid prime number"
 )
 
 // PrivateKey represents a private key in the HPPK protocol.
@@ -194,6 +195,14 @@ func Encrypt(pub *PublicKey, msg []byte) (kem *KEM, err error) {
 func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	// Convert the message to a big integer
 	secret := new(big.Int).SetBytes(msg)
+	if len(msg) == 0 {
+		return nil, errors.New(ERR_MSG_NULL_ENCRYPTION)
+	}
+
+	if prime == nil {
+		return nil, errors.New(ERR_MSG_INVALID_PRIME)
+	}
+
 	if secret.Cmp(prime) >= 0 {
 		return nil, errors.New(ERR_MSG_DATA_EXCEEDED)
 	}
@@ -399,6 +408,11 @@ func (priv *PrivateKey) Public() *PublicKey {
 	return &priv.PublicKey
 }
 
+// Order returns the polynomial order of the private key.
+func (priv *PrivateKey) Order() int {
+	return len(priv.PublicKey.P) - 2
+}
+
 // VerifySignature verifies the signature of the message digest using the public key and given prime
 func VerifySignatureWithPrime(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {
 	return verifySignature(sig, digest, pub, prime)
@@ -412,7 +426,19 @@ func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
 
 func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {
 	// Ensure fields in the public key are valid
-	if pub.P == nil || pub.Q == nil {
+	if len(digest) == 0 {
+		return false
+	}
+
+	if sig == nil {
+		return false
+	}
+
+	if prime == nil {
+		return false
+	}
+
+	if len(pub.P) == 0 || len(pub.Q) == 0 {
 		return false
 	}
 

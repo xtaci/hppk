@@ -27,6 +27,7 @@ For a detailed explanation of the underlying theory and security proofs, please 
 - **Efficient Key Encapsulation Mechanism (KEM)**: Securely exchanges symmetric keys.
 - **Strong Digital Signatures (DS)**: Provides authentication and integrity verification of messages.
 - **Scalable and Efficient**: Suitable for various applications, ranging from small-scale systems to large, complex networks.
+  
 ![348681154-37b88d3c-9bd6-4436-9837-1a0b078e5ac1](https://github.com/user-attachments/assets/8bd6fd28-b7be-4c0e-b417-7ab5e95b13bc)
 
 

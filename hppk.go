@@ -19,6 +19,8 @@ import (
 // DefaultPrime is a large prime number used in cryptographic operations.
 const DefaultPrime = "32317006071311007300714876688669951960444102669715484032130345427524655138867890893197201411522913463688717960921898019494119559150490921095088152386448283120630877367300996091750197750389652106796057638384067568276792218642619756161838094338476170470581645852036305042887575891541065808607552399123930385521914333389668342420684974786564569494856176035326322058077805659331026192708460314150258592864177116725943603718461857357598351152301645904403697613233287231227125684710820209725157101726931323469678542580656697935045997268352998638215525166389437335543602135433229604645318478604952148193555853611059596231637"
 
+const MULTIVARIATE = 5 // default variants
+
 // Error messages for various conditions.
 const (
 	ERR_MSG_ORDER           = "order must be at least 5"
@@ -222,30 +224,30 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 		}
 	}
 
-	// Generate a random noise
-	noise, err := rand.Int(rand.Reader, prime)
-	if err != nil {
-		return nil, err
-	}
-	noise = noise.Exp(big.NewInt(2), big.NewInt(1800), nil)
-
-	// Initialize Si with the secret message
-	Si := big.NewInt(1)
 	// Compute the encrypted values P and Q
 	P := new(big.Int)
 	Q := new(big.Int)
-
 	t := new(big.Int)
-	for i := 0; i < len(pub.P); i++ {
-		noised := new(big.Int).Mul(noise, Si)
-		noised.Mod(noised, prime)
+	for c := 0; c < MULTIVARIATE; c++ {
+		// Generate a random noise
+		noise, err := rand.Int(rand.Reader, prime)
+		if err != nil {
+			return nil, err
+		}
+		// Initialize Si with the secret message
+		Si := big.NewInt(1)
 
-		P.Add(P, t.Mul(noised, pub.P[i]))
-		Q.Add(Q, t.Mul(noised, pub.Q[i]))
+		for i := 0; i < len(pub.P); i++ {
+			noised := new(big.Int).Mul(noise, Si)
+			noised.Mod(noised, prime)
 
-		// Si = secret^i
-		Si.Mul(Si, secret)
-		Si.Mod(Si, prime)
+			P.Add(P, t.Mul(noised, pub.P[i]))
+			Q.Add(Q, t.Mul(noised, pub.Q[i]))
+
+			// Si = secret^i
+			Si.Mul(Si, secret)
+			Si.Mod(Si, prime)
+		}
 	}
 
 	return &KEM{P: P, Q: Q}, nil

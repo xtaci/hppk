@@ -510,7 +510,7 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 func createCoPrimePair(polyTerms int, p *big.Int) (R *big.Int, S *big.Int, err error) {
 	one := big.NewInt(1)
 
-	bitLength := 2*p.BitLen() + big.NewInt(int64(polyTerms)).BitLen()
+	bitLength := 2*p.BitLen() + big.NewInt(int64(polyTerms*MULTIVARIATE)).BitLen()
 	L := big.NewInt(1)
 	L.Lsh(L, uint(bitLength))
 

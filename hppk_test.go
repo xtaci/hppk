@@ -18,6 +18,7 @@ package hppk
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"log"
 	"math/big"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestGenerateKey tests the key generation
 func TestGenerateKey(t *testing.T) {
 	key, err := GenerateKey(5)
 	assert.Nil(t, err, "GenerateKey() failed")
@@ -35,6 +37,7 @@ func TestGenerateKey(t *testing.T) {
 	assert.Equal(t, gcd.GCD(nil, nil, key.R2, key.S2), one, "GCD(r1, s1) != 1")
 }
 
+// TestKEM tests the key encapsulation mechanism
 func TestKEM(t *testing.T) {
 	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
@@ -52,6 +55,7 @@ func TestKEM(t *testing.T) {
 	assert.True(t, equal)
 }
 
+// TestDigitalSignature tests the digital signature
 func TestDigitalSignature(t *testing.T) {
 	alice, err := GenerateKey(10)
 	assert.Nil(t, err)
@@ -63,9 +67,40 @@ func TestDigitalSignature(t *testing.T) {
 	assert.True(t, VerifySignature(sign, digest, &alice.PublicKey))
 }
 
+// BenchmarkGenerateKey benchmarks the key generation
 func BenchmarkGenerateKey(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = GenerateKey(5)
+	}
+}
+
+// BenchmarkSigning benchmarks the signing
+func BenchmarkSigning(b *testing.B) {
+	alice, err := GenerateKey(10)
+	assert.Nil(b, err)
+
+	s := sha256.New()
+	msg := []byte("hello quantum")
+	digest := s.Sum(msg)
+
+	for i := 0; i < b.N; i++ {
+		alice.Sign(digest)
+	}
+}
+
+// BenchmarkVerification benchmarks the verification
+func BenchmarkVerification(b *testing.B) {
+	alice, err := GenerateKey(10)
+	assert.Nil(b, err)
+
+	s := sha256.New()
+	msg := []byte("hello quantum")
+	digest := s.Sum(msg)
+	sign, err := alice.Sign(digest)
+	assert.Nil(b, err)
+
+	for i := 0; i < b.N; i++ {
+		VerifySignature(sign, digest, &alice.PublicKey)
 	}
 }
 
@@ -78,5 +113,4 @@ func TestRing(t *testing.T) {
 	t.Log(x)
 	ring(r0, s0, x)
 	t.Log(x)
-
 }

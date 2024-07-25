@@ -210,7 +210,7 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	}
 
 	// Ensure fields in the public key are valid
-	if pub.P == nil || pub.Q == nil {
+	if len(pub.P) == 0 || len(pub.Q) == 0 {
 		return nil, errors.New(ERR_MSG_INVALID_PUBKEY)
 	}
 

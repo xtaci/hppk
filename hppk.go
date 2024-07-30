@@ -111,14 +111,18 @@ RETRY:
 	}
 
 	// Ensure f(x) and h(x) are not linear depending by checking it's coefficients
+	// f(x) = f1x + f0 => f(x)/f0 = f1/f0 * x + 1
+	// h(x) = h1x + h0 => h(x)/h1 = h1/h0 * x + 1
+	// by comparing the ratio of f1/f0 and h1/h0, we can ensure that f(x) and h(x) are not linear dependent
 	revF0 := new(big.Int).ModInverse(f0, prime)
 	revH0 := new(big.Int).ModInverse(h0, prime)
 
 	f1RevF0 := new(big.Int).Mul(f1, revF0)
-	f2RevH0 := new(big.Int).Mul(f1, revH0)
+	h1RevH0 := new(big.Int).Mul(h1, revH0)
+
 	f1RevF0.Mod(f1RevF0, prime)
-	f2RevH0.Mod(f2RevH0, prime)
-	if f1RevF0.Cmp(f2RevH0) == 0 {
+	h1RevH0.Mod(h1RevH0, prime)
+	if f1RevF0.Cmp(h1RevH0) == 0 {
 		goto RETRY
 	}
 

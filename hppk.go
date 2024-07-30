@@ -67,6 +67,27 @@ type KEM struct {
 	Q *big.Int
 }
 
+// Equal checks if two public keys are equal
+func (pub *PublicKey) Equal(other *PublicKey) bool {
+	if len(pub.P) != len(other.P) || len(pub.Q) != len(other.Q) {
+		return false
+	}
+
+	for i := 0; i < len(pub.P); i++ {
+		if pub.P[i].Cmp(other.P[i]) != 0 {
+			return false
+		}
+	}
+
+	for i := 0; i < len(pub.Q); i++ {
+		if pub.Q[i].Cmp(other.Q[i]) != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
 // GenerateKey generates a new HPPK private key with the given order and default prime number.
 func GenerateKey(order int) (*PrivateKey, error) {
 	// Ensure the order is at least 5

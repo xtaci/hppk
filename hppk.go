@@ -77,7 +77,7 @@ func GenerateKey(order int) (*PrivateKey, error) {
 RETRY:
 	// Convert the prime constant to a big.Int
 	prime, _ := big.NewInt(0).SetString(DefaultPrime, 0)
-	// Generate coprime pairs (r1, s1) and (r1, s1)
+	// Generate coprime pairs (r1, s1) and (r2, s2)
 	r1, s1, err := createCoPrimePair(order+2, prime)
 	if err != nil {
 		return nil, err

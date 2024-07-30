@@ -1,4 +1,4 @@
-# HPPK: Homomorphic Polynomial Public-key Cryptography
+## HPPK: Homomorphic Polynomial Public-key Cryptography
 
 ![348665850-c2575c66-4f87-42a9-8b86-e81991de03c0](https://github.com/user-attachments/assets/31b9dc56-f353-4df8-9aca-247a5c8d79ad)
 

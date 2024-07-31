@@ -36,6 +36,17 @@ const (
 	ERR_MSG_INVALID_PRIME   = "invalid prime number"
 )
 
+// defaultPrime is the prime number used in cryptographic operations.
+var defaultPrime *big.Int
+
+var (
+	errInvalidPrime = errors.New("Invalid Prime")
+)
+
+func init() {
+	defaultPrime, _ = new(big.Int).SetString(DefaultPrime, 0)
+}
+
 // PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
 	Prime     *big.Int // Prime number used for cryptographic operations
@@ -90,14 +101,25 @@ func (pub *PublicKey) Equal(other *PublicKey) bool {
 
 // GenerateKey generates a new HPPK private key with the given order and default prime number.
 func GenerateKey(order int) (*PrivateKey, error) {
+	return generateKey(order, defaultPrime)
+}
+
+// GenerateKey generates a new HPPK private key with the given order and custom prime number.
+func GenerateKeyWithPrime(order int, strPrime string) (*PrivateKey, error) {
+	customPrime, ok := big.NewInt(0).SetString(strPrime, 0)
+	if !ok {
+		return nil, errInvalidPrime
+	}
+	return generateKey(order, customPrime)
+}
+
+func generateKey(order int, prime *big.Int) (*PrivateKey, error) {
 	// Ensure the order is at least 5
 	if order < 5 {
 		return nil, errors.New(ERR_MSG_ORDER)
 	}
 
 RETRY:
-	// Convert the prime constant to a big.Int
-	prime, _ := big.NewInt(0).SetString(DefaultPrime, 0)
 	// Generate coprime pairs (r1, s1) and (r2, s2)
 	r1, s1, err := createCoPrimePair(order+2, prime)
 	if err != nil {
@@ -219,8 +241,7 @@ func EncryptWithPrime(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err
 
 // Encrypt encrypts a message using the given public key and default prime number.
 func Encrypt(pub *PublicKey, msg []byte) (kem *KEM, err error) {
-	prime, _ := big.NewInt(0).SetString(DefaultPrime, 0)
-	return encrypt(pub, msg, prime)
+	return encrypt(pub, msg, defaultPrime)
 }
 
 // encrypt encrypts a message using the given public key.
@@ -452,8 +473,7 @@ func VerifySignatureWithPrime(sig *Signature, digest []byte, pub *PublicKey, pri
 
 // VerifySignature verifies the signature of the message digest using the public key and default prime
 func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
-	prime, _ := big.NewInt(0).SetString(DefaultPrime, 0)
-	return verifySignature(sig, digest, pub, prime)
+	return verifySignature(sig, digest, pub, defaultPrime)
 }
 
 func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {

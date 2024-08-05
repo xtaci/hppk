@@ -49,7 +49,6 @@ func init() {
 
 // PrivateKey represents a private key in the HPPK protocol.
 type PrivateKey struct {
-	Prime     *big.Int // Prime number used for cryptographic operations
 	R1, S1    *big.Int // r1 and s1 are coprimes
 	R2, S2    *big.Int // r2 and s2 are coprimes
 	F0, F1    *big.Int // f(x) = f1x + f0
@@ -59,8 +58,9 @@ type PrivateKey struct {
 
 // PublicKey represents a public key in the HPPK protocol.
 type PublicKey struct {
-	P []*big.Int // Coefficients of the polynomial P(x)
-	Q []*big.Int // Coefficients of the polynomial Q(x)
+	Prime *big.Int   // Prime number used for cryptographic operations
+	P     []*big.Int // Coefficients of the polynomial P(x)
+	Q     []*big.Int // Coefficients of the polynomial Q(x)
 }
 
 // Signature represents a digital signature in the HPPK protocol.
@@ -218,30 +218,25 @@ RETRY:
 
 	// Return the generated private key
 	return &PrivateKey{
-		Prime: prime,
-		R1:    r1,
-		S1:    s1,
-		R2:    r2,
-		S2:    s2,
-		F0:    f0,
-		F1:    f1,
-		H0:    h0,
-		H1:    h1,
+		R1: r1,
+		S1: s1,
+		R2: r2,
+		S2: s2,
+		F0: f0,
+		F1: f1,
+		H0: h0,
+		H1: h1,
 		PublicKey: PublicKey{
-			P: P,
-			Q: Q,
+			Prime: prime,
+			P:     P,
+			Q:     Q,
 		},
 	}, nil
 }
 
-// Encrypt encrypts a message using the given public key and custom prime number.
-func EncryptWithPrime(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
-	return encrypt(pub, msg, prime)
-}
-
 // Encrypt encrypts a message using the given public key and default prime number.
 func Encrypt(pub *PublicKey, msg []byte) (kem *KEM, err error) {
-	return encrypt(pub, msg, defaultPrime)
+	return encrypt(pub, msg, pub.Prime)
 }
 
 // encrypt encrypts a message using the given public key.
@@ -466,14 +461,9 @@ func (priv *PrivateKey) Order() int {
 	return len(priv.PublicKey.P) - 2
 }
 
-// VerifySignature verifies the signature of the message digest using the public key and given prime
-func VerifySignatureWithPrime(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {
-	return verifySignature(sig, digest, pub, prime)
-}
-
 // VerifySignature verifies the signature of the message digest using the public key and default prime
 func VerifySignature(sig *Signature, digest []byte, pub *PublicKey) bool {
-	return verifySignature(sig, digest, pub, defaultPrime)
+	return verifySignature(sig, digest, pub, pub.Prime)
 }
 
 func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.Int) bool {

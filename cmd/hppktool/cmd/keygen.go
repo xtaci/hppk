@@ -6,7 +6,6 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -16,14 +15,10 @@ import (
 
 // keygenCmd represents the keygen command
 var keygenCmd = &cobra.Command{
-	Use:   "keygen [directory]",
-	Short: "generate a hppk private/public key pair",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if err := cobra.ExactArgs(1)(cmd, args); err != nil {
-			return errors.New("Missing directory, Use `hppktool keygen -h` to see how the usage.\n")
-		}
-		return nil
-	},
+	Use:     "keygen [directory]",
+	Short:   "generate a hppk private/public key pair",
+	Example: "hppktool keygen /tmp\n" + "hppktool keygen /tmp --order 5",
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := args[0]
 		order, err := cmd.Flags().GetInt("order")

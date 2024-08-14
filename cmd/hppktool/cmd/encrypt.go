@@ -22,6 +22,11 @@ var encryptCmd = &cobra.Command{
 	Short: "encrypts a message from standard input",
 	Long:  `the message will first be SHA256 hashed and then encrypted using AES256`,
 	Run: func(cmd *cobra.Command, args []string) {
+		silent, err := cmd.Flags().GetBool("silent")
+		if err != nil {
+			panic("cann't get param -> silent")
+		}
+
 		paramPub, err := cmd.Flags().GetString("pubkey")
 		if err != nil {
 			panic("cannot get param -> pubkey")
@@ -67,15 +72,19 @@ var encryptCmd = &cobra.Command{
 				}
 			}
 			message = message[:count]
-			fmt.Printf("RAW(hex):%v\n", hex.EncodeToString(message))
+			if !silent {
+				fmt.Printf("RAW(hex):%v\n", hex.EncodeToString(message))
+			}
 		} else {
 			h := sha256.New()
 			if _, err := io.Copy(h, os.Stdin); err != nil {
 				fmt.Println(err)
 				return
 			}
-			message := h.Sum(nil)
-			fmt.Printf("SHA256(hex):%v\n", hex.EncodeToString(message))
+			message = h.Sum(nil)
+			if !silent {
+				fmt.Printf("SHA256(hex):%v\n", hex.EncodeToString(message))
+			}
 		}
 
 		// encrypt the message
@@ -87,7 +96,10 @@ var encryptCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("Encrypted:\n%v\n", string(jsonBuffer.Bytes()))
+		if !silent {
+			fmt.Printf("Encrypted:\n")
+		}
+		fmt.Print(string(jsonBuffer.Bytes()))
 	},
 }
 

@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 xtaci <imap@live.com>
 */
 package cmd
 
@@ -20,7 +20,7 @@ import (
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
 	Short: "encrypts a message from standard input",
-	Long:  `the message will first be SHA256 hashed and then encrypted using AES256`,
+	Long:  `the message will first be SHA256 hashed and then encrypted using AES256 unless -raw is specified`,
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {

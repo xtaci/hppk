@@ -36,7 +36,7 @@ For a detailed explanation of the underlying theory and security proofs, please 
 ## Installation
 ```console
 $ go install github.com/xtaci/hppk/cmd/hppktool
-$ ./hppktool
+$ hppktool
 HPPK key management tool.
 Supports key generation, signing, verification, and secret encryption.
 

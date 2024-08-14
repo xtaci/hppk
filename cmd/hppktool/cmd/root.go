@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:   "hppktool",
 	Short: "HPPK key management tool",
 	Long: `HPPK key management tool.
-HPPK key generation, signing, verification, and secret encryption.`,
+Supports key generation, signing, verification, and secret encryption.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -38,5 +38,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.PersistentFlags().BoolP("silent", "s", false, "Suppress non-vital message")
+	rootCmd.PersistentFlags().BoolP("silent", "s", false, "Suppress non-essential messages")
 }

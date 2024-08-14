@@ -18,9 +18,9 @@ import (
 // verifyCmd represents the verify command
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "verify a message from standard input",
-	Long: `Verify a HPPK signed message from standard input against the signature file and public key.
-The message is first SHA256 hashed, unless -raw is specified`,
+	Short: "Verify a message from standard input",
+	Long: `Verify an HPPK-signed message from standard input against the provided signature file and public key.
+By default, the message is hashed with SHA256 before verification, unless the -raw flag is specified.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {
@@ -130,6 +130,6 @@ func init() {
 	// is called directly, e.g.:
 	// verifyCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	verifyCmd.Flags().StringP("pubkey", "p", "./id_hppk.pub", "the HPPK public key file to verify against.")
-	verifyCmd.Flags().String("sigfile", "./sigfile", "the signed signature file.")
-	verifyCmd.Flags().Bool("raw", false, "encrypt the raw message, the message length must not exceed 256 bytes.")
+	verifyCmd.Flags().String("sigfile", "./sigfile", "The generated signature file.")
+	verifyCmd.Flags().Bool("raw", false, "Verify the raw message without hashing. The message length must not exceed 256 bytes.")
 }

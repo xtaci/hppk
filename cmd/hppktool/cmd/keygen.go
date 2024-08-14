@@ -16,8 +16,8 @@ import (
 // keygenCmd represents the keygen command
 var keygenCmd = &cobra.Command{
 	Use:     "keygen [directory]",
-	Short:   "generate a hppk private/public key pair",
-	Long:    "Generate a HPPK private/public key pair with given order and save them to the specified directory.",
+	Short:   "Generate an HPPK private/public key pair",
+	Long:    "Generate an HPPK private/public key pair with the specified order and save them to the specified directory.",
 	Example: "hppktool keygen /tmp\n" + "hppktool keygen /tmp --order 5",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -99,5 +99,5 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	keygenCmd.Flags().IntP("order", "o", 5, "the order of the polynomial")
+	keygenCmd.Flags().IntP("order", "o", 5, "The degree of the polynomial")
 }

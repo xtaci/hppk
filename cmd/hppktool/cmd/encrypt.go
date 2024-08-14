@@ -19,9 +19,9 @@ import (
 // encryptCmd represents the encrypt command
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "encrypts a message from standard input",
-	Long: `Encrypt a message with HPPK from standard input.
-The message is first SHA256 hashed, unless -raw is specified`,
+	Short: "Encrypts a message from standard input",
+	Long: `Encrypt a message using HPPK from standard input.
+By default, the message is hashed with SHA256 before encryption, unless the -raw flag is specified.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {
@@ -117,5 +117,5 @@ func init() {
 	// is called directly, e.g.:
 	// encryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	encryptCmd.Flags().StringP("pubkey", "p", "./id_hppk.pub", "the HPPK public key file")
-	encryptCmd.Flags().Bool("raw", false, "encrypt the raw message, the message length must not exceed 256 bytes")
+	encryptCmd.Flags().Bool("raw", false, "Encrypt the raw message without hashing. The message length must not exceed 256 bytes.")
 }

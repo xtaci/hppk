@@ -19,9 +19,9 @@ import (
 // signCmd represents the sign command
 var signCmd = &cobra.Command{
 	Use:   "sign",
-	Short: "sign a message from standard input",
-	Long: `Sign a message with HPPK from standard input with a given public key.
-The message is first SHA256 hashed, unless -raw is specified`,
+	Short: "Sign a message from standard input",
+	Long: `Sign a message using HPPK from standard input with the specified public key.
+By default, the message is hashed with SHA256 before signing, unless the -raw flag is specified.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {
@@ -117,6 +117,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// signCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	signCmd.Flags().StringP("identity", "p", "./id_hppk", "the hppk private key file")
-	signCmd.Flags().Bool("raw", false, "encrypt the raw message, the message length must not exceed 256 bytes")
+	signCmd.Flags().StringP("identity", "p", "./id_hppk", "the HPPK private key file")
+	signCmd.Flags().Bool("raw", false, "Sign the raw message without hashing. The message length must not exceed 256 bytes.")
 }

@@ -20,7 +20,8 @@ import (
 var signCmd = &cobra.Command{
 	Use:   "sign",
 	Short: "sign a message from standard input",
-	Long:  `the message will first be SHA256 hashed and then encrypted using HPPK, unless -raw is specified`,
+	Long: `Sign a message with HPPK from standard input with a given public key.
+The message is first SHA256 hashed, unless -raw is specified`,
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, err := cmd.Flags().GetBool("silent")
 		if err != nil {

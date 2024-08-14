@@ -17,6 +17,7 @@ import (
 var keygenCmd = &cobra.Command{
 	Use:     "keygen [directory]",
 	Short:   "generate a hppk private/public key pair",
+	Long:    "Generate a HPPK private/public key pair with given order and save them to the specified directory.",
 	Example: "hppktool keygen /tmp\n" + "hppktool keygen /tmp --order 5",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {

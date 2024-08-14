@@ -13,7 +13,8 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "hppktool",
 	Short: "HPPK key management tool",
-	Long:  `Key generation, signing, verification, and secret encryption tool for HPPK.`,
+	Long: `HPPK key management tool.
+HPPK key generation, signing, verification, and secret encryption.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },

@@ -33,7 +33,7 @@ For a detailed explanation of the underlying theory and security proofs, please 
 ![348681154-37b88d3c-9bd6-4436-9837-1a0b078e5ac1](https://github.com/user-attachments/assets/8bd6fd28-b7be-4c0e-b417-7ab5e95b13bc)
 
 
-## Installlation
+## Installation
 ```console
 $ go install github.com/xtaci/hppk/cmd/hppktool
 $ ./hppktool

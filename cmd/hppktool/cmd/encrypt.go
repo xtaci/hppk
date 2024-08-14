@@ -1,27 +1,93 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/xtaci/hppk"
 )
 
 // encryptCmd represents the encrypt command
 var encryptCmd = &cobra.Command{
 	Use:   "encrypt",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "encrypts a message from standard input",
+	Long:  `the message will first be SHA256 hashed and then encrypted using AES256`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("encrypt called")
+		paramPub, err := cmd.Flags().GetString("pubkey")
+		if err != nil {
+			panic("cannot get param -> pubkey")
+		}
+
+		paramRaw, err := cmd.Flags().GetBool("raw")
+		if err != nil {
+			panic("cannot get param -> raw")
+		}
+
+		// open the public key file
+		fPub, err := os.Open(paramPub)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer fPub.Close()
+
+		// sign the hash with the public key
+		pub := &hppk.PublicKey{}
+		err = json.NewDecoder(fPub).Decode(pub)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// read from standard input and hash it
+		var message []byte
+		if paramRaw {
+			message = make([]byte, 256)
+			count := 0
+			lr := io.LimitReader(os.Stdin, 256)
+			for {
+				n, err := lr.Read(message[count:])
+				count += n
+				if err == io.EOF {
+					break
+				}
+
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+			message = message[:count]
+			fmt.Printf("RAW(hex):%v\n", hex.EncodeToString(message))
+		} else {
+			h := sha256.New()
+			if _, err := io.Copy(h, os.Stdin); err != nil {
+				fmt.Println(err)
+				return
+			}
+			message := h.Sum(nil)
+			fmt.Printf("SHA256(hex):%v\n", hex.EncodeToString(message))
+		}
+
+		// encrypt the message
+		kem, err := hppk.Encrypt(pub, message)
+		var jsonBuffer bytes.Buffer
+		err = json.NewEncoder(&jsonBuffer).Encode(kem)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Printf("Encrypted:\n%v\n", string(jsonBuffer.Bytes()))
 	},
 }
 
@@ -37,4 +103,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// encryptCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	encryptCmd.Flags().StringP("pubkey", "p", "./id_hppk.pub", "the hppk public key file")
+	encryptCmd.Flags().Bool("raw", false, "encrypt the raw message, the message length must not exceed 256 bytes")
 }

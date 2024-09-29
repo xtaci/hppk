@@ -224,8 +224,8 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
 
 ## References
-* QPP and HPPK: Unifying Non-Commutativity for Quantum-Secure Cryptography with Galois Permutation Group(https://arxiv.org/pdf/2402.01852).
-* [Homomorphic Polynomial Public Key Cryptography for Quantum-secure Digital Signature](https://www.academia.edu/123150574/Homomorphic_Polynomial_Public_Key_Cryptography_for_Quantum_secure_Digital_Signature?email_work_card=view-paper)
+* QPP and HPPK: Unifying Non-Commutativity for Quantum-Secure Cryptography with Galois Permutation Group (https://arxiv.org/pdf/2402.01852).
+* Homomorphic Polynomial Public Key Cryptography for Quantum-secure Digital Signature (https://www.academia.edu/123150574/Homomorphic_Polynomial_Public_Key_Cryptography_for_Quantum_secure_Digital_Signature?email_work_card=view-paper)
 
 ## Acknowledgments
 

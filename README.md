@@ -1,6 +1,5 @@
 ## HPPK: Homomorphic Polynomial Public-key Cryptography
 
-![348665850-c2575c66-4f87-42a9-8b86-e81991de03c0](https://github.com/user-attachments/assets/31b9dc56-f353-4df8-9aca-247a5c8d79ad)
 
 [![GoDoc][1]][2] [![Go Report Card][3]][4] [![CreatedAt][5]][6] 
 
@@ -225,8 +224,8 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
 
 ## References
-
-For more detailed information, please refer to the [research paper](https://arxiv.org/pdf/2402.01852).
+* QPP and HPPK: Unifying Non-Commutativity for Quantum-Secure Cryptography with Galois Permutation Group(https://arxiv.org/pdf/2402.01852).
+* [Homomorphic Polynomial Public Key Cryptography for Quantum-secure Digital Signature](https://www.academia.edu/123150574/Homomorphic_Polynomial_Public_Key_Cryptography_for_Quantum_secure_Digital_Signature?email_work_card=view-paper)
 
 ## Acknowledgments
 

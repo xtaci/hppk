@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"log"
 	"math/big"
 	"testing"
@@ -113,4 +114,58 @@ func TestRing(t *testing.T) {
 	t.Log(x)
 	ring(r0, s0, x)
 	t.Log(x)
+}
+
+// TestClientServerAuthFlow simulates a challenge-response authentication round.
+func TestClientServerAuthFlow(t *testing.T) {
+	client, err := GenerateKey(8)
+	assert.Nil(t, err)
+
+	serverKnownPub := client.Public()
+
+	challenge := make([]byte, 32)
+	_, err = rand.Read(challenge)
+	assert.Nil(t, err)
+
+	signature, err := client.Sign(challenge)
+	assert.Nil(t, err)
+
+	assert.True(t, VerifySignature(signature, challenge, serverKnownPub))
+
+	tampered := make([]byte, len(challenge))
+	copy(tampered, challenge)
+	tampered[0] ^= 0xFF
+
+	assert.False(t, VerifySignature(signature, tampered, serverKnownPub))
+}
+
+// TestClientServerAuthFlowWithSerialization adds a serialization hop to mimic network transport.
+func TestClientServerAuthFlowWithSerialization(t *testing.T) {
+	client, err := GenerateKey(8)
+	assert.Nil(t, err)
+
+	pubBytes, err := client.Public().MarshalBinary()
+	assert.Nil(t, err)
+
+	var serverPub PublicKey
+	assert.Nil(t, serverPub.UnmarshalBinary(pubBytes))
+
+	challenge := make([]byte, 32)
+	_, err = rand.Read(challenge)
+	assert.Nil(t, err)
+
+	signature, err := client.Sign(challenge)
+	assert.Nil(t, err)
+
+	sigPayload, err := json.Marshal(signature)
+	assert.Nil(t, err)
+
+	var receivedSig Signature
+	assert.Nil(t, json.Unmarshal(sigPayload, &receivedSig))
+
+	assert.True(t, VerifySignature(&receivedSig, challenge, &serverPub))
+
+	corruptedChallenge := append([]byte(nil), challenge...)
+	corruptedChallenge[0] ^= 0x01
+	assert.False(t, VerifySignature(&receivedSig, corruptedChallenge, &serverPub))
 }

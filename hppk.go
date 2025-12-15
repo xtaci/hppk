@@ -40,7 +40,7 @@ const (
 var defaultPrime *big.Int
 
 var (
-	errInvalidPrime = errors.New("Invalid Prime")
+	errInvalidPrime = errors.New("invalid Prime")
 )
 
 func init() {

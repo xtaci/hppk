@@ -90,6 +90,10 @@ By default, the message is hashed with SHA256 before encryption, unless the -raw
 
 		// encrypt the message
 		kem, err := hppk.Encrypt(pub, message)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		var jsonBuffer bytes.Buffer
 		err = json.NewEncoder(&jsonBuffer).Encode(kem)
 		if err != nil {

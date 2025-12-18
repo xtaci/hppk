@@ -90,6 +90,10 @@ By default, the message is hashed with SHA256 before signing, unless the -raw fl
 
 		// encrypt the message
 		sig, err := priv.Sign(message)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		var jsonBuffer bytes.Buffer
 		err = json.NewEncoder(&jsonBuffer).Encode(sig)
 		if err != nil {

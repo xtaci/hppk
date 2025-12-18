@@ -148,6 +148,10 @@ RETRY:
 		return nil, err
 	}
 
+	if f0.Sign() == 0 || h0.Sign() == 0 {
+		goto RETRY
+	}
+
 	// Ensure all pairs are distinct
 	if r1.Cmp(r2) == 0 || s1.Cmp(s2) == 0 || f0.Cmp(h0) == 0 || f1.Cmp(h1) == 0 {
 		goto RETRY
@@ -158,7 +162,13 @@ RETRY:
 	// h(x) = h1x + h0 => h(x)/h1 = h1/h0 * x + 1
 	// by comparing the ratio of f1/f0 and h1/h0, we can ensure that f(x) and h(x) are not linear dependent
 	revF0 := new(big.Int).ModInverse(f0, prime)
+	if revF0 == nil {
+		goto RETRY
+	}
 	revH0 := new(big.Int).ModInverse(h0, prime)
+	if revH0 == nil {
+		goto RETRY
+	}
 
 	f1RevF0 := new(big.Int).Mul(f1, revF0)
 	h1RevH0 := new(big.Int).Mul(h1, revH0)

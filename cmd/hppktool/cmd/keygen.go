@@ -57,7 +57,7 @@ var keygenCmd = &cobra.Command{
 			panic(err)
 		}
 
-		fPriv, err := os.OpenFile(privFile, os.O_CREATE|os.O_WRONLY, 0600)
+		fPriv, err := os.OpenFile(privFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 		if err != nil {
 			panic(err)
 		}
@@ -68,7 +68,7 @@ var keygenCmd = &cobra.Command{
 		}
 
 		// write public key
-		fPub, err := os.OpenFile(pubFile, os.O_CREATE|os.O_WRONLY, 0644)
+		fPub, err := os.OpenFile(pubFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			panic(err)
 		}

@@ -319,7 +319,13 @@ func (priv *PrivateKey) Decrypt(kem *KEM) (secret *big.Int, err error) {
 
 	// Symmetric decryption using private key components
 	revR1 := new(big.Int).ModInverse(priv.R1, priv.S1)
+	if revR1 == nil {
+		return nil, errors.New("invalid private key: R1 and S1 are not coprime")
+	}
 	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
+	if revR2 == nil {
+		return nil, errors.New("invalid private key: R2 and S2 are not coprime")
+	}
 
 	pbar := new(big.Int).Set(kem.P)
 	qbar := new(big.Int).Set(kem.Q)
@@ -375,6 +381,9 @@ func (priv *PrivateKey) Decrypt(kem *KEM) (secret *big.Int, err error) {
 	// x := -b/a
 	revB := new(big.Int).Sub(prime, b)
 	revA := new(big.Int).ModInverse(a, prime)
+	if revA == nil {
+		return nil, errors.New("decryption failed: modular inverse not found")
+	}
 
 	x := new(big.Int).Mul(revA, revB)
 	x.Mod(x, prime)
@@ -413,11 +422,17 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 
 	// calculate F & H
 	revR2 := new(big.Int).ModInverse(priv.R2, priv.S2)
+	if revR2 == nil {
+		return nil, errors.New("invalid private key: R2 and S2 are not coprime")
+	}
 	F := new(big.Int)
 	F.Mul(revR2, alphaFx)
 	F.Mod(F, priv.S2)
 
 	revR1 := new(big.Int).ModInverse(priv.R1, priv.S1)
+	if revR1 == nil {
+		return nil, errors.New("invalid private key: R1 and S1 are not coprime")
+	}
 	H := new(big.Int)
 	H.Mul(revR1, alphaHx)
 	H.Mod(H, priv.S1)
@@ -486,6 +501,22 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 		return false
 	}
 
+	if sig.Beta == nil || sig.F == nil || sig.H == nil || sig.S1Verify == nil || sig.S2Verify == nil {
+		return false
+	}
+
+	for _, v := range sig.U {
+		if v == nil {
+			return false
+		}
+	}
+
+	for _, v := range sig.V {
+		if v == nil {
+			return false
+		}
+	}
+
 	if prime == nil {
 		return false
 	}
@@ -495,6 +526,10 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 	}
 
 	if len(pub.P) != len(pub.Q) {
+		return false
+	}
+
+	if len(sig.U) != len(pub.Q) || len(sig.V) != len(pub.P) {
 		return false
 	}
 

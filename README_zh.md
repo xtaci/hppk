@@ -33,32 +33,6 @@ HPPK 的主要目标是提供：
 ![348681154-37b88d3c-9bd6-4436-9837-1a0b078e5ac1](https://github.com/user-attachments/assets/8bd6fd28-b7be-4c0e-b417-7ab5e95b13bc)
 
 
-## 安装
-
-```console
-$ go install github.com/xtaci/hppk/cmd/hppktool
-$ hppktool
-HPPK key management tool.
-Supports key generation, signing, verification, and secret encryption.
-
-Usage:
-  hppktool [command]
-
-Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  encrypt     Encrypts a message from standard input
-  help        Help about any command
-  keygen      Generate an HPPK private/public key pair
-  sign        Sign a message from standard input
-  verify      Verify a message from standard input
-
-Flags:
-  -h, --help     help for hppktool
-  -s, --silent   Suppress non-essential messages
-
-Use "hppktool [command] --help" for more information about a command.
-```
-
 ## 使用库
 
 要使用 HPPK，您需要安装 Go。您可以从[官方网站](https://golang.org/dl/)下载并安装 Go。

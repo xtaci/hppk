@@ -1,4 +1,4 @@
-## HPPK: Homomorphic Polynomial Public-key Cryptography
+## HPPK: 同态多项式公钥密码学
 
 [English](README.md) | [中文](README_zh.md)
 
@@ -11,29 +11,30 @@
 [5]: https://img.shields.io/github/created-at/xtaci/hppk
 [6]: https://img.shields.io/github/created-at/xtaci/hppk
 
-## Overview
+## 概览
 
-HPPK is an implementation of a Homomorphic Polynomial Public Key (HPPK) system, designed for both Key Encapsulation Mechanisms (KEM) and Digital Signatures (DS). This cryptographic protocol leverages the properties of polynomials to create secure, efficient methods for key exchange and message signing.
+HPPK 是同态多项式公钥（Homomorphic Polynomial Public Key）系统的实现，设计用于密钥封装机制（KEM）和数字签名（DS）。该加密协议利用多项式的特性，为密钥交换和消息签名提供了安全、高效的方法。
 
-The main objectives of HPPK are to provide:
+HPPK 的主要目标是提供：
 
-- **Secure key encapsulation**: Facilitating the secure exchange of symmetric keys.
-- **Robust digital signatures**: Ensuring the authenticity and integrity of messages.
+- **安全的密钥封装**：促进对称密钥的安全交换。
+- **稳健的数字签名**：确保消息的真实性和完整性。
 
-For a detailed explanation of the underlying theory and security proofs, please refer to the [research paper](https://arxiv.org/pdf/2402.01852).
+有关底层理论和安全性证明的详细解释，请参阅[研究论文](https://arxiv.org/pdf/2402.01852)。
 
-## Features
+## 特性
 
-- **Homomorphic Encryption**: Allows computations on ciphertexts that result in encrypted outcomes, which match the operations performed on the plaintexts.
-- **Polynomial-Based Cryptography**: Utilizes polynomials to create robust public and private keys.
-- **Efficient Key Encapsulation Mechanism (KEM)**: Securely exchanges symmetric keys.
-- **Strong Digital Signatures (DS)**: Provides authentication and integrity verification of messages.
-- **Scalable and Efficient**: Suitable for various applications, ranging from small-scale systems to large, complex networks.
+- **同态加密**：允许对密文进行计算，其结果是加密的，解密后与对明文执行相同操作的结果一致。
+- **基于多项式的密码学**：利用多项式创建稳健的公钥和私钥。
+- **高效的密钥封装机制 (KEM)**：安全地交换对称密钥。
+- **强大的数字签名 (DS)**：提供消息的身份验证和完整性验证。
+- **可扩展且高效**：适用于各种应用场景，从小型系统到大型复杂网络。
   
 ![348681154-37b88d3c-9bd6-4436-9837-1a0b078e5ac1](https://github.com/user-attachments/assets/8bd6fd28-b7be-4c0e-b417-7ab5e95b13bc)
 
 
-## Installation
+## 安装
+
 ```console
 $ go install github.com/xtaci/hppk/cmd/hppktool
 $ hppktool
@@ -57,28 +58,29 @@ Flags:
 
 Use "hppktool [command] --help" for more information about a command.
 ```
-## Using Library
 
-To use HPPK, you need to have Go installed. You can download and install Go from [the official website](https://golang.org/dl/).
+## 使用库
 
-1. Clone the repository:
+要使用 HPPK，您需要安装 Go。您可以从[官方网站](https://golang.org/dl/)下载并安装 Go。
+
+1. 克隆仓库：
 
     ```console
     git clone https://github.com/xtaci/hppk.git
     cd hppk
     ```
 
-2. Build the project:
+2. 构建项目：
 
     ```console
     go build
     ```
 
-## Usage
+## 使用方法
 
-### Generating Keys
+### 生成密钥
 
-To generate a new pair of private and public keys:
+生成一对新的私钥和公钥：
 
 ```go
 package main
@@ -99,9 +101,9 @@ func main() {
 }
 ```
 
-### Encryption
+### 加密
 
-To encrypt a message using the public key:
+使用公钥加密消息：
 
 ```go
 package main
@@ -127,9 +129,9 @@ func main() {
 }
 ```
 
-### Decryption
+### 解密
 
-To decrypt the encrypted values using the private key:
+使用私钥解密加密值：
 
 ```go
 package main
@@ -160,7 +162,8 @@ func main() {
 }
 ```
 
-### Signing
+### 签名
+
 ```go
 package main
 
@@ -186,7 +189,8 @@ func main() {
 
 ```
 
-### Verification
+### 验签
+
 ```go
 package main
 
@@ -216,18 +220,18 @@ func main() {
 
 ```
 
-## Contributing
+## 贡献
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements, bug fixes, or additional features.
+欢迎贡献！请提交 Issue 或 Pull Request 以进行任何改进、错误修复或添加新功能。
 
-## License
+## 许可证
 
-This project is licensed under the GPLv3 License. See the [LICENSE](LICENSE) file for details.
+本项目采用 GPLv3 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
 
-## References
+## 参考文献
 * QPP and HPPK: Unifying Non-Commutativity for Quantum-Secure Cryptography with Galois Permutation Group (https://arxiv.org/pdf/2402.01852).
 * Homomorphic Polynomial Public Key Cryptography for Quantum-secure Digital Signature (https://www.academia.edu/123150574/Homomorphic_Polynomial_Public_Key_Cryptography_for_Quantum_secure_Digital_Signature?email_work_card=view-paper)
 
-## Acknowledgments
+## 致谢
 
-Special thanks to the authors of the research paper for their groundbreaking work on HPPK and its applications in KEM and DS.
+特别感谢研究论文的作者在 HPPK 及其在 KEM 和 DS 中的应用方面所做的开创性工作。

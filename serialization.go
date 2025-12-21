@@ -112,11 +112,29 @@ func (priv *PrivateKey) MarshalBinary() ([]byte, error) {
 	buf := bytes.NewBuffer(make([]byte, 0, len(privateKeyMagicBytes)))
 	buf.Write(privateKeyMagicBytes)
 
-	scalars := []*big.Int{priv.R1, priv.S1, priv.R2, priv.S2, priv.F0, priv.F1, priv.H0, priv.H1}
-	for _, scalar := range scalars {
-		if err := writeBigInt(buf, scalar); err != nil {
-			return nil, err
-		}
+	if err := writeBigInt(buf, priv.R1); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.S1); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.R2); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.S2); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.F0); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.F1); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.H0); err != nil {
+		return nil, err
+	}
+	if err := writeBigInt(buf, priv.H1); err != nil {
+		return nil, err
 	}
 
 	if err := writeLengthPrefixedBytes(buf, pubBytes); err != nil {
@@ -137,13 +155,30 @@ func (priv *PrivateKey) UnmarshalBinary(data []byte) error {
 		return errInvalidPrivateEncoding
 	}
 
-	scalars := make([]*big.Int, 8)
-	for i := range scalars {
-		val, err := readBigInt(reader)
-		if err != nil {
-			return errInvalidPrivateEncoding
-		}
-		scalars[i] = val
+	var err error
+	if priv.R1, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.S1, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.R2, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.S2, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.F0, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.F1, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.H0, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
+	}
+	if priv.H1, err = readBigInt(reader); err != nil {
+		return errInvalidPrivateEncoding
 	}
 
 	blob, err := readLengthPrefixedBytes(reader)
@@ -160,14 +195,6 @@ func (priv *PrivateKey) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
-	priv.R1 = scalars[0]
-	priv.S1 = scalars[1]
-	priv.R2 = scalars[2]
-	priv.S2 = scalars[3]
-	priv.F0 = scalars[4]
-	priv.F1 = scalars[5]
-	priv.H0 = scalars[6]
-	priv.H1 = scalars[7]
 	priv.PublicKey = pub
 	return nil
 }
@@ -178,7 +205,7 @@ func writeBigInt(buf *bytes.Buffer, v *big.Int) error {
 		v = big.NewInt(0)
 	}
 	data := v.Bytes()
-	if err := writeUint32(buf, data); err != nil {
+	if err := writeUint32(buf, len(data)); err != nil {
 		return err
 	}
 	if len(data) == 0 {
@@ -202,7 +229,7 @@ func readBigInt(r io.Reader) (*big.Int, error) {
 
 // writePolynomial emits the polynomial degree followed by its coefficients.
 func writePolynomial(buf *bytes.Buffer, coeffs []*big.Int) error {
-	if err := writeUint32(buf, intSliceToBytesLength(len(coeffs))); err != nil {
+	if err := writeUint32(buf, len(coeffs)); err != nil {
 		return err
 	}
 	for _, coeff := range coeffs {
@@ -247,7 +274,7 @@ func expectMagic(r io.Reader, magic []byte) error {
 }
 
 func writeLengthPrefixedBytes(buf *bytes.Buffer, data []byte) error {
-	if err := writeUint32(buf, data); err != nil {
+	if err := writeUint32(buf, len(data)); err != nil {
 		return err
 	}
 	if len(data) == 0 {
@@ -261,8 +288,7 @@ func readLengthPrefixedBytes(r io.Reader) ([]byte, error) {
 	return readUint32Data(r)
 }
 
-func writeUint32(buf *bytes.Buffer, data []byte) error {
-	length := len(data)
+func writeUint32(buf *bytes.Buffer, length int) error {
 	if length < 0 {
 		return errSerializedIntegerTooLarge
 	}
@@ -273,10 +299,6 @@ func writeUint32(buf *bytes.Buffer, data []byte) error {
 		return err
 	}
 	return nil
-}
-
-func intSliceToBytesLength(length int) []byte {
-	return make([]byte, length)
 }
 
 func readUint32Data(r io.Reader) ([]byte, error) {

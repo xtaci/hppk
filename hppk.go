@@ -63,6 +63,28 @@ type PublicKey struct {
 	Q     []*big.Int // Coefficients of the polynomial Q(x)
 }
 
+// IsValid checks if the PublicKey's P and Q are valid (non-nil, same length, elements non-nil, and in [0, Prime)).
+func (pub *PublicKey) IsValid() bool {
+	if pub == nil || pub.Prime == nil || len(pub.P) == 0 || len(pub.Q) == 0 {
+		return false
+	}
+	if len(pub.P) != len(pub.Q) {
+		return false
+	}
+	for i := 0; i < len(pub.P); i++ {
+		if pub.P[i] == nil || pub.Q[i] == nil {
+			return false
+		}
+		if pub.P[i].Sign() < 0 || pub.P[i].Cmp(pub.Prime) >= 0 {
+			return false
+		}
+		if pub.Q[i].Sign() < 0 || pub.Q[i].Cmp(pub.Prime) >= 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // Signature represents a digital signature in the HPPK protocol.
 type Signature struct {
 	Beta               *big.Int   // a randomly choosen number from Fp

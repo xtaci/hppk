@@ -169,3 +169,44 @@ func TestClientServerAuthFlowWithSerialization(t *testing.T) {
 	corruptedChallenge[0] ^= 0x01
 	assert.False(t, VerifySignature(&receivedSig, corruptedChallenge, &serverPub))
 }
+
+// TestPublicKeyIsValid tests the IsValid method of PublicKey
+func TestPublicKeyIsValid(t *testing.T) {
+	prime := big.NewInt(17)
+	validP := []*big.Int{big.NewInt(1), big.NewInt(2)}
+	validQ := []*big.Int{big.NewInt(3), big.NewInt(4)}
+	pub := &PublicKey{Prime: prime, P: validP, Q: validQ}
+	assert.True(t, pub.IsValid(), "Valid PublicKey should return true")
+
+	// nil Prime
+	pub1 := &PublicKey{Prime: nil, P: validP, Q: validQ}
+	assert.False(t, pub1.IsValid(), "Nil Prime should return false")
+
+	// P and Q length mismatch
+	pub2 := &PublicKey{Prime: prime, P: validP, Q: []*big.Int{big.NewInt(1)}}
+	assert.False(t, pub2.IsValid(), "Length mismatch should return false")
+
+	// P contains nil
+	pub3 := &PublicKey{Prime: prime, P: []*big.Int{nil, big.NewInt(2)}, Q: validQ}
+	assert.False(t, pub3.IsValid(), "P contains nil should return false")
+
+	// Q contains nil
+	pub4 := &PublicKey{Prime: prime, P: validP, Q: []*big.Int{nil, big.NewInt(2)}}
+	assert.False(t, pub4.IsValid(), "Q contains nil should return false")
+
+	// P out of range
+	pub5 := &PublicKey{Prime: prime, P: []*big.Int{big.NewInt(18), big.NewInt(2)}, Q: validQ}
+	assert.False(t, pub5.IsValid(), "P out of range should return false")
+
+	// Q out of range
+	pub6 := &PublicKey{Prime: prime, P: validP, Q: []*big.Int{big.NewInt(3), big.NewInt(18)}}
+	assert.False(t, pub6.IsValid(), "Q out of range should return false")
+
+	// P negative
+	pub7 := &PublicKey{Prime: prime, P: []*big.Int{big.NewInt(-1), big.NewInt(2)}, Q: validQ}
+	assert.False(t, pub7.IsValid(), "P negative should return false")
+
+	// Q negative
+	pub8 := &PublicKey{Prime: prime, P: validP, Q: []*big.Int{big.NewInt(-1), big.NewInt(2)}}
+	assert.False(t, pub8.IsValid(), "Q negative should return false")
+}

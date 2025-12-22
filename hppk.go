@@ -193,7 +193,7 @@ RETRY:
 	// Initialize P and Q with zero values
 	P := make([]*big.Int, len(Bn)+1)
 	Q := make([]*big.Int, len(Bn)+1)
-	for i := 0; i < len(P); i++ {
+	for i := range P {
 		P[i] = big.NewInt(0)
 		Q[i] = big.NewInt(0)
 	}
@@ -221,7 +221,7 @@ RETRY:
 	}
 
 	// Convert P, Q to Ring S
-	for i := 0; i < len(P); i++ {
+	for i := range P {
 		ring(r1, s1, P[i])
 		ring(r2, s2, Q[i])
 	}
@@ -284,7 +284,7 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	P := new(big.Int)
 	Q := new(big.Int)
 	t := new(big.Int)
-	for c := 0; c < MULTIVARIATE; c++ {
+	for range MULTIVARIATE {
 		// Generate a random noise
 		noise, err := rand.Int(rand.Reader, prime)
 		if err != nil {
@@ -448,14 +448,11 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	U := make([]*big.Int, len(priv.Q))
 
 	// make K >= L+ 32
-	K := priv.S1.BitLen()
-	if priv.S2.BitLen() > K {
-		K = priv.S2.BitLen()
-	}
+	K := max(priv.S2.BitLen(), priv.S1.BitLen())
 	K += 32
 	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(K)), nil)
 
-	for i := 0; i < len(V); i++ {
+	for i := range V {
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
 		V[i].Quo(V[i], priv.S2)
 
@@ -542,7 +539,7 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 	// Initiate Q,P from public key
 	Q := make([]*big.Int, len(sig.U))
 	P := make([]*big.Int, len(sig.V))
-	for i := 0; i < len(Q); i++ {
+	for i := range Q {
 		Q[i] = new(big.Int).Mul(pub.Q[i], sig.Beta)
 		Q[i].Mod(Q[i], prime)
 
@@ -561,7 +558,7 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 
 	// verify signature
 	Si := big.NewInt(1)
-	for i := 0; i < len(Q); i++ {
+	for i := range Q {
 		lhsA := new(big.Int).Mul(Q[i], sig.F)
 
 		t.Mul(sig.F, sig.V[i])

@@ -19,6 +19,7 @@ import (
 	"crypto/rand" // Importing package for cryptographic random number generation
 	"errors"      // Importing package for error handling
 	"math/big"    // Importing package for handling arbitrary precision arithmetic
+	"math/bits"   // Importing package for bit manipulation
 )
 
 // DefaultPrime is a large prime number used in cryptographic operations.
@@ -306,6 +307,9 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 	P := new(big.Int)
 	Q := new(big.Int)
 	t := new(big.Int)
+	// Preallocate temporary variables to reduce allocations
+	noised := new(big.Int)
+	Si := new(big.Int)
 	for range MULTIVARIATE {
 		// Generate a random noise
 		noise, err := rand.Int(rand.Reader, prime)
@@ -313,10 +317,10 @@ func encrypt(pub *PublicKey, msg []byte, prime *big.Int) (kem *KEM, err error) {
 			return nil, err
 		}
 		// Initialize Si with the secret message
-		Si := big.NewInt(1)
+		Si.SetInt64(1)
 
 		for i := 0; i < len(pub.P); i++ {
-			noised := new(big.Int).Mul(noise, Si)
+			noised.Mul(noise, Si)
 			noised.Mod(noised, prime)
 
 			P.Add(P, t.Mul(noised, pub.P[i]))
@@ -472,7 +476,8 @@ func (priv *PrivateKey) Sign(digest []byte) (sign *Signature, err error) {
 	// make K >= L+ 32
 	K := max(priv.S2.BitLen(), priv.S1.BitLen())
 	K += 32
-	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(K)), nil)
+	// Use bit shift instead of Exp for R = 2^K (much faster)
+	R := new(big.Int).Lsh(big.NewInt(1), uint(K))
 
 	for i := range V {
 		V[i] = new(big.Int).Mul(priv.Q[i], R)
@@ -575,29 +580,35 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 	sumLhs := new(big.Int)
 	sumRhs := new(big.Int)
 
-	// recover R
-	R := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(sig.K)), nil)
+	// recover R using bit shift (faster than Exp)
+	R := new(big.Int).Lsh(big.NewInt(1), uint(sig.K))
 
-	// verify signature
+	// verify signature - preallocate temp variables to reduce allocations
+	lhsA := new(big.Int)
+	lhsB := new(big.Int)
+	lhs := new(big.Int)
+	rhsA := new(big.Int)
+	rhsB := new(big.Int)
+	rhs := new(big.Int)
 	Si := big.NewInt(1)
 	for i := range Q {
-		lhsA := new(big.Int).Mul(Q[i], sig.F)
+		lhsA.Mul(Q[i], sig.F)
 
 		t.Mul(sig.F, sig.V[i])
 		t.Quo(t, R)
-		lhsB := new(big.Int).Mul(t, sig.S2Verify)
-		lhs := new(big.Int).Sub(lhsA, lhsB)
+		lhsB.Mul(t, sig.S2Verify)
+		lhs.Sub(lhsA, lhsB)
 
 		lhs.Mul(lhs, Si)
 		sumLhs.Add(sumLhs, lhs)
 		sumLhs.Mod(sumLhs, prime)
 
-		rhsA := new(big.Int).Mul(P[i], sig.H)
+		rhsA.Mul(P[i], sig.H)
 
 		t.Mul(sig.H, sig.U[i])
 		t.Quo(t, R)
-		rhsB := new(big.Int).Mul(t, sig.S1Verify)
-		rhs := new(big.Int).Sub(rhsA, rhsB)
+		rhsB.Mul(t, sig.S1Verify)
+		rhs.Sub(rhsA, rhsB)
 
 		rhs.Mul(rhs, Si)
 		sumRhs.Add(sumRhs, rhs)
@@ -614,10 +625,11 @@ func verifySignature(sig *Signature, digest []byte, pub *PublicKey, prime *big.I
 // The possibility for 2 randomly choosen numbers to be coprime is 6/pi^2
 func createCoPrimePair(polyTerms int, p *big.Int) (R *big.Int, S *big.Int, err error) {
 	one := big.NewInt(1)
+	gcd := new(big.Int)
 
-	bitLength := 2*p.BitLen() + big.NewInt(int64(polyTerms*MULTIVARIATE)).BitLen()
-	L := big.NewInt(1)
-	L.Lsh(L, uint(bitLength))
+	// Use bits.Len instead of creating a big.Int just to get bit length
+	bitLength := 2*p.BitLen() + bits.Len(uint(polyTerms*MULTIVARIATE))
+	L := new(big.Int).Lsh(one, uint(bitLength))
 
 	for {
 		R, err = rand.Int(rand.Reader, p)
@@ -633,7 +645,8 @@ func createCoPrimePair(polyTerms int, p *big.Int) (R *big.Int, S *big.Int, err e
 		S.Add(S, L)
 
 		// Check if GCD(R, S) == 1, which means R and S are coprime
-		if new(big.Int).GCD(nil, nil, R, S).Cmp(one) == 0 {
+		// Reuse gcd object to reduce allocations
+		if gcd.GCD(nil, nil, R, S).Cmp(one) == 0 {
 			return R, S, nil
 		}
 	}

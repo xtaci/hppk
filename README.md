@@ -2,12 +2,10 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-[![GoDoc][1]][2] [![Go Report Card][3]][4] [![CreatedAt][5]][6] 
+[![GoDoc][1]][2] [![CreatedAt][5]][6] 
 
 [1]: https://godoc.org/github.com/xtaci/hppk?status.svg
 [2]: https://pkg.go.dev/github.com/xtaci/hppk
-[3]: https://goreportcard.com/badge/github.com/xtaci/hppk
-[4]: https://goreportcard.com/report/github.com/xtaci/hppk
 [5]: https://img.shields.io/github/created-at/xtaci/hppk
 [6]: https://img.shields.io/github/created-at/xtaci/hppk
 
